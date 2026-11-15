@@ -38,6 +38,7 @@ import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.NotificationsActive
@@ -245,7 +246,15 @@ fun SettingsScreen(nav: NavController) {
                         Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary,
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("How messages are rewritten", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Default prompt",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        Icons.Rounded.Edit, "Edit default prompt",
+                        Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary,
+                    )
                 }
                 Text(
                     s.defaultPrompt,
@@ -255,7 +264,7 @@ fun SettingsScreen(nav: NavController) {
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    "Applies to every enabled app that has no prompt of its own. Tap to edit or pick a preset.",
+                    "Used for every enabled app that has NO custom prompt of its own. Tap to edit or pick a preset.",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )

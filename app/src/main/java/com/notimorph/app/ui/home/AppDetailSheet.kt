@@ -38,7 +38,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,11 +56,11 @@ fun AppDetailSheet(entry: AppEntry, onDismiss: () -> Unit) {
     val app = context.applicationContext as NotiMorphApp
     val prefs = app.prefs
     val s by prefs.state.collectAsState()
-    val scope = rememberCoroutineScope()
 
     val currentCustom = s.appPrompts[entry.pkg].orEmpty()
     var text by remember(entry.pkg, currentCustom) { mutableStateOf(currentCustom) }
     var showTest by remember { mutableStateOf(false) }
+    var showDefaultEditor by remember { mutableStateOf(false) }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -108,7 +107,8 @@ fun AppDetailSheet(entry: AppEntry, onDismiss: () -> Unit) {
                 SwitchMorphic(
                     checked = s.enabledApps.contains(entry.pkg),
                     onChecked = { on ->
-                        scope.launch { prefs.setAppEnabled(entry.pkg, on) }
+                        // App-level scope: survives the sheet leaving composition.
+                        app.appScope.launch { prefs.setAppEnabled(entry.pkg, on) }
                     },
                 )
             }
@@ -154,7 +154,7 @@ fun AppDetailSheet(entry: AppEntry, onDismiss: () -> Unit) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (currentCustom.isNotBlank()) {
                         TextButton(onClick = {
-                            scope.launch { prefs.setAppPrompt(entry.pkg, "") }
+                            app.appScope.launch { prefs.setAppPrompt(entry.pkg, "") }
                             text = ""
                         }) { Text("Remove custom") }
                     }
@@ -162,23 +162,38 @@ fun AppDetailSheet(entry: AppEntry, onDismiss: () -> Unit) {
                     OutlinedButton(onClick = { showTest = true }) { Text("Test") }
                     Button(
                         onClick = {
-                            scope.launch {
-                                prefs.setAppPrompt(entry.pkg, text)
-                                onDismiss()
-                            }
+                            // IMPORTANT: write from the app-level scope and dismiss
+                            // immediately — a composition-bound scope would be
+                            // cancelled mid-write when the sheet closes.
+                            app.appScope.launch { prefs.setAppPrompt(entry.pkg, text) }
+                            onDismiss()
                         },
                     ) { Text("Save") }
                 }
 
-                Text(
-                    if (currentCustom.isNotBlank()) "✦ Using a custom prompt for this app"
-                    else "Using the default prompt",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (currentCustom.isNotBlank()) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        if (currentCustom.isNotBlank()) "✦ Using a custom prompt for this app"
+                        else "Using the default prompt",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (currentCustom.isNotBlank()) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { showDefaultEditor = true }) {
+                        Text("Edit default prompt")
+                    }
+                }
             }
         }
+    }
+
+    if (showDefaultEditor) {
+        com.notimorph.app.ui.settings.PromptEditorDialog(
+            initial = s.defaultPrompt,
+            onSave = { app.appScope.launch { prefs.setDefaultPrompt(it) } },
+            onDismiss = { showDefaultEditor = false },
+        )
     }
 
     if (showTest) {

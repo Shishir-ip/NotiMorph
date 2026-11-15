@@ -27,8 +27,17 @@ class NotiListener : NotificationListenerService() {
 
     // Duplicate suppression: raw notification -> last seen time.
     private val seen = object : LruCache<String, Long>(64) {}
-    // Instant replay cache: raw notification -> transformed text (skips the API on reposts).
-    private val cached = object : LruCache<String, String>(64) {}
+
+    /** Instant replay cache entry — only reused while prompt/model stay identical. */
+    private class CacheEntry(val text: String, val fingerprint: Int, val at: Long)
+
+    // raw notification -> transformed text (skips the API on reposts)
+    private val cached = object : LruCache<String, CacheEntry>(64) {}
+
+    /** Cache is only valid for the exact prompt + provider + model that produced it. */
+    private fun fingerprint(s: Settings, pkg: String): Int =
+        (s.promptFor(pkg) + "|" + s.provider.id + "|" + s.currentModel + "|" + s.currentKey.hashCode())
+            .hashCode()
 
     private val appNameCache = object : LruCache<String, String>(128) {}
 
@@ -74,18 +83,21 @@ class NotiListener : NotificationListenerService() {
             seen.put(key, now)
         }
 
-        val cachedText = synchronized(cached) { cached.get(key) }
+        val fp = fingerprint(s, sbn.packageName)
+        val hit = synchronized(cached) { cached.get(key) }?.takeIf {
+            it.fingerprint == fp && SystemClock.elapsedRealtime() - it.at < CACHE_TTL_MS
+        }
         scope.launch {
             val appName = appLabel(sbn.packageName)
-            if (cachedText != null) {
-                deliver(sbn, s, appName, title, body, key, cachedText)
+            if (hit != null) {
+                deliver(sbn, s, appName, title, body, key, hit.text)
                 return@launch
             }
             if (!s.isConfigured()) return@launch
             gate.withPermit {
                 val result = AiClient.transform(s, appName, title, body, s.promptFor(sbn.packageName))
                 val text = result.getOrNull() ?: return@withPermit
-                synchronized(cached) { cached.put(key, text) }
+                synchronized(cached) { cached.put(key, CacheEntry(text, fp, SystemClock.elapsedRealtime())) }
                 deliver(sbn, s, appName, title, body, key, text)
             }
         }
@@ -128,6 +140,7 @@ class NotiListener : NotificationListenerService() {
 
     companion object {
         private const val DUPLICATE_WINDOW_MS = 5_000L
+        private const val CACHE_TTL_MS = 10 * 60_000L
 
         /** Whether this app currently holds notification-listener access. */
         fun isConnected(context: Context): Boolean {

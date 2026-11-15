@@ -22,18 +22,15 @@ object AiClient {
 
     private val JSON = "application/json; charset=utf-8".toMediaType()
 
+    // One shared engine for warm-up AND real calls so the pre-warmed
+    // connection is actually reused. Tight timeouts -> fail fast, the
+    // original notification is still on the watch anyway.
     val client: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(8, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
-        .callTimeout(25, TimeUnit.SECONDS)
+        .connectTimeout(6, TimeUnit.SECONDS)
+        .readTimeout(12, TimeUnit.SECONDS)
+        .callTimeout(15, TimeUnit.SECONDS)
         .connectionPool(ConnectionPool(4, 5, TimeUnit.MINUTES))
         .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
-        .build()
-
-    private val warmClient: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .callTimeout(6, TimeUnit.SECONDS)
-        .connectionPool(ConnectionPool(4, 5, TimeUnit.MINUTES))
         .build()
 
     /** Cheap fire-and-forget request to warm DNS + TLS for the active provider. */
@@ -45,7 +42,7 @@ object AiClient {
             Provider.CUSTOM -> s.customBaseUrl.trim().trimEnd('/')
         }
         if (url.isBlank() || !url.startsWith("http")) return
-        warmClient.newCall(Request.Builder().url(url).head().build()).enqueue(object : okhttp3.Callback {
+        client.newCall(Request.Builder().url(url).head().build()).enqueue(object : okhttp3.Callback {
             override fun onFailure(call: okhttp3.Call, e: IOException) {}
             override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
                 response.close()
@@ -73,11 +70,14 @@ object AiClient {
         try {
             val text = when (s.provider) {
                 Provider.GEMINI -> callGemini(s.geminiModel, s.geminiKey, sys, user)
-                Provider.GROQ -> callOpenAI("https://api.groq.com/openai/v1/chat/completions", s.groqModel, s.groqKey, sys, user)
+                Provider.GROQ -> callOpenAI(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    s.groqModel, s.groqKey, sys, user, lowReasoning = true,
+                )
                 Provider.CUSTOM -> {
                     val base = s.customBaseUrl.trim().trimEnd('/')
                     val url = if (base.endsWith("/chat/completions")) base else "$base/chat/completions"
-                    callOpenAI(url, s.customModel.trim(), s.customKey, sys, user)
+                    callOpenAI(url, s.customModel.trim(), s.customKey, sys, user, lowReasoning = false)
                 }
             }
             val cleaned = clean(text, s.maxLen)
@@ -98,8 +98,29 @@ object AiClient {
     )
 
     // --- Google Gemini ------------------------------------------------------
+
+    /** Thrown when the endpoint rejects thinkingConfig; we retry without it. */
+    private class ThinkingUnsupportedException : IOException("thinkingConfig rejected")
+
     private fun callGemini(model: String, key: String, sys: String, user: String): String {
+        return try {
+            geminiOnce(model, key, sys, user, disableThinking = true)
+        } catch (e: ThinkingUnsupportedException) {
+            geminiOnce(model, key, sys, user, disableThinking = false)
+        }
+    }
+
+    private fun geminiOnce(model: String, key: String, sys: String, user: String, disableThinking: Boolean): String {
         if (key.isBlank()) throw IOException("Add your Gemini API key in Settings → API key.")
+        // thinkingBudget 0 = no hidden reasoning: the single biggest latency win
+        // on Flash-class models (rewriting a notification needs zero thinking).
+        val generationConfig = JSONObject()
+            .put("temperature", 0.2)
+            .put("maxOutputTokens", 320)
+        if (disableThinking) {
+            generationConfig.put("thinkingConfig", JSONObject().put("thinkingBudget", 0))
+        }
+
         val payload = JSONObject()
             .put(
                 "systemInstruction",
@@ -113,10 +134,7 @@ object AiClient {
                         .put("parts", JSONArray().put(JSONObject().put("text", user))),
                 ),
             )
-            .put(
-                "generationConfig",
-                JSONObject().put("temperature", 0.2).put("maxOutputTokens", 512),
-            )
+            .put("generationConfig", generationConfig)
 
         val request = Request.Builder()
             .url("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent")
@@ -126,7 +144,12 @@ object AiClient {
 
         client.newCall(request).execute().use { resp ->
             val text = resp.body?.string().orEmpty()
-            if (!resp.isSuccessful) throw IOException(errorText(resp.code, text))
+            if (!resp.isSuccessful) {
+                if (resp.code == 400 && text.contains("thinkingConfig")) {
+                    throw ThinkingUnsupportedException()
+                }
+                throw IOException(errorText(resp.code, text))
+            }
             val root = JSONObject(text)
             root.optJSONObject("promptFeedback")?.optString("blockReason")?.takeIf { it.isNotBlank() }
                 ?.let { throw IOException("Blocked by safety filter: $it") }
@@ -142,7 +165,14 @@ object AiClient {
     }
 
     // --- OpenAI-compatible (Groq + custom endpoints) ------------------------
-    private fun callOpenAI(url: String, model: String, key: String, sys: String, user: String): String {
+    private fun callOpenAI(
+        url: String,
+        model: String,
+        key: String,
+        sys: String,
+        user: String,
+        lowReasoning: Boolean,
+    ): String {
         if (model.isBlank()) throw IOException("Set a model name for this provider in Settings.")
         val payload = JSONObject()
             .put("model", model)
@@ -153,8 +183,11 @@ object AiClient {
                     .put(JSONObject().put("role", "user").put("content", user)),
             )
             .put("temperature", 0.2)
-            .put("max_tokens", 512)
+            .put("max_tokens", 320)
             .put("stream", false)
+        // Groq's GPT-OSS models reason by default — "low" cuts seconds off the
+        // round-trip. Only sent to Groq; custom endpoints may reject unknown fields.
+        if (lowReasoning) payload.put("reasoning_effort", "low")
 
         val builder = Request.Builder().url(url).post(payload.toString().toRequestBody(JSON))
         if (key.isNotBlank()) builder.header("Authorization", "Bearer $key")
