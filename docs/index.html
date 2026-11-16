@@ -11,6 +11,10 @@
 <meta name="theme-color" content="#5B4BD6">
 <link rel="canonical" href="https://shishir-ip.github.io/NotiMorph/">
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
 <!-- Open Graph -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="NotiMorph">
@@ -20,8 +24,6 @@
 <meta property="og:image" content="https://shishir-ip.github.io/NotiMorph/screenshots/1_home.png">
 <meta property="og:image:alt" content="NotiMorph Android app home screen">
 <meta property="og:locale" content="en_US">
-
-<!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="NotiMorph – AI Notification Restyler for Android">
 <meta name="twitter:description" content="Fixes Bangla/Unicode boxes on smartwatches. AI rewrites every notification before it reaches your wrist. Free & open source.">
@@ -29,7 +31,6 @@
 
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 108 108'%3E%3Crect width='108' height='108' rx='24' fill='%235B4BD6'/%3E%3Cpath fill='%23fff' d='M54 82c4.4 0 8-3.6 8-8H46c0 4.4 3.6 8 8 8zm24-24V48c0-12.3-6.5-22.6-18-25.3V20c0-3.3-2.7-6-6-6s-6 2.7-6 6v2.7C36.5 25.4 30 35.7 30 48v10l-8 8v4h64v-4l-8-8z'/%3E%3Cpath fill='%23FFC94D' d='M78 24l3 8 8 3-8 3-3 8-3-8-8-3 8-3 3-8z'/%3E%3C/svg%3E">
 
-<!-- Structured data: the app -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -49,7 +50,6 @@
 }
 </script>
 
-<!-- Structured data: FAQ (rich results) -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -77,195 +77,400 @@
 
 <style>
   :root {
-    --primary: #5B4BD6;
-    --primary-dark: #4335AC;
+    --primary: #6C5CE7;
+    --primary-deep: #4335AC;
     --primary-light: #E5DEFF;
-    --bg: #FDFBFF;
-    --surface: #F1EEF9;
-    --text: #1B1B21;
-    --muted: #5B5B66;
+    --bg: #F7F5FF;
+    --surface: #EFEBFB;
+    --card: #FFFFFF;
+    --text: #16161D;
+    --muted: #5D5C6B;
     --amber: #FFC94D;
-    --green: #34A853;
-    --radius: 16px;
+    --glow1: rgba(108, 92, 231, .45);
+    --glow2: rgba(56, 189, 248, .35);
+    --glow3: rgba(255, 201, 77, .3);
+    --radius: 18px;
+    --border: rgba(22, 22, 29, .09);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #131318;
-      --surface: #1E1F24;
-      --text: #E5E1E9;
-      --muted: #A8A6B3;
-      --primary-light: #3E2DBB;
+      --bg: #0E0E14;
+      --surface: #14141C;
+      --card: #191922;
+      --text: #EAE7F2;
+      --muted: #9C99AD;
+      --border: rgba(255, 255, 255, .08);
     }
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   body {
-    font-family: -apple-system, "Segoe UI", Roboto, "Noto Sans Bengali", sans-serif;
+    font-family: "Inter", -apple-system, "Segoe UI", Roboto, "Noto Sans Bengali", sans-serif;
     background: var(--bg);
     color: var(--text);
     line-height: 1.65;
+    overflow-x: hidden;
   }
+  h1, h2, h3, .brand, .flow .step { font-family: "Space Grotesk", "Inter", sans-serif; }
   a { color: var(--primary); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 20px; }
+  a:hover { text-decoration: none; }
+  img { max-width: 100%; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 22px; }
 
+  /* ---------- scroll progress ---------- */
+  #progress {
+    position: fixed; top: 0; left: 0; height: 3px; width: 0%;
+    background: linear-gradient(90deg, #6C5CE7, #38BDF8, #FFC94D);
+    z-index: 99; transition: width .1s linear;
+  }
+
+  /* ---------- header ---------- */
   header {
-    position: sticky; top: 0; z-index: 10;
-    background: color-mix(in srgb, var(--bg) 88%, transparent);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+    position: sticky; top: 0; z-index: 50;
+    background: color-mix(in srgb, var(--bg) 72%, transparent);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
   }
-  .nav { display: flex; align-items: center; gap: 18px; padding: 12px 0; }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.15rem; color: var(--text); }
-  .brand svg { width: 30px; height: 30px; }
-  .nav-links { margin-left: auto; display: flex; gap: 18px; flex-wrap: wrap; }
-  .nav-links a { color: var(--muted); font-size: 0.92rem; font-weight: 600; }
-  .nav-links a:hover { color: var(--primary); text-decoration: none; }
+  .nav { display: flex; align-items: center; gap: 16px; padding: 13px 0; }
+  .brand {
+    display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.18rem;
+    letter-spacing: -.02em; color: var(--text);
+  }
+  .brand svg { width: 32px; height: 32px; border-radius: 8px; box-shadow: 0 4px 14px var(--glow1); }
+  .brand b {
+    background: linear-gradient(90deg, #6C5CE7, #38BDF8, #6C5CE7);
+    background-size: 200% auto;
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent;
+    animation: shine 5s linear infinite;
+  }
+  @keyframes shine { to { background-position: 200% center; } }
+  .nav-links { margin-left: auto; display: flex; gap: 20px; flex-wrap: wrap; }
+  .nav-links a { color: var(--muted); font-size: .92rem; font-weight: 600; position: relative; padding: 4px 0; }
+  .nav-links a::after {
+    content: ""; position: absolute; left: 0; bottom: 0; width: 0%; height: 2px;
+    background: var(--primary); border-radius: 2px; transition: width .25s;
+  }
+  .nav-links a:hover { color: var(--text); }
+  .nav-links a:hover::after { width: 100%; }
+  @media (max-width: 760px) { .nav-links { display: none; } }
 
+  /* ---------- reveal on scroll ---------- */
+  .reveal { opacity: 0; transform: translateY(28px); transition: opacity .8s cubic-bezier(.2,.7,.2,1), transform .8s cubic-bezier(.2,.7,.2,1); }
+  .reveal.in { opacity: 1; transform: none; }
+  .reveal[data-delay="1"] { transition-delay: .12s; }
+  .reveal[data-delay="2"] { transition-delay: .24s; }
+  .reveal[data-delay="3"] { transition-delay: .36s; }
+  .reveal[data-delay="4"] { transition-delay: .48s; }
+
+  /* ---------- hero ---------- */
   .hero {
-    padding: 64px 0 56px;
-    background: linear-gradient(160deg, var(--primary) 0%, var(--primary-dark) 55%, #2C1F86 100%);
+    position: relative; overflow: hidden;
+    padding: 90px 0 110px;
+    background: linear-gradient(160deg, #221B5E 0%, var(--primary-deep) 45%, #1B1440 100%);
     color: #fff;
-    text-align: center;
   }
-  .hero .appicon {
-    width: 96px; height: 96px; border-radius: 24px; background: rgba(255,255,255,.14);
-    display: inline-flex; align-items: center; justify-content: center; margin-bottom: 18px;
+  .orb { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .8; pointer-events: none; }
+  .orb.o1 { width: 480px; height: 480px; background: radial-gradient(circle, var(--glow1), transparent 70%); top: -140px; left: -120px; animation: drift 14s ease-in-out infinite alternate; }
+  .orb.o2 { width: 420px; height: 420px; background: radial-gradient(circle, var(--glow2), transparent 70%); bottom: -160px; right: -80px; animation: drift 18s ease-in-out infinite alternate-reverse; }
+  .orb.o3 { width: 300px; height: 300px; background: radial-gradient(circle, var(--glow3), transparent 70%); top: 30%; left: 55%; animation: drift 11s ease-in-out infinite alternate; }
+  @keyframes drift {
+    0% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(40px, -30px) scale(1.12); }
+    100% { transform: translate(-30px, 25px) scale(.95); }
   }
-  .hero .appicon svg { width: 58px; height: 58px; }
-  .hero h1 { font-size: clamp(1.8rem, 4.5vw, 2.7rem); line-height: 1.2; letter-spacing: -0.5px; }
-  .hero p.sub { margin: 14px auto 8px; max-width: 720px; font-size: clamp(1rem, 2.4vw, 1.18rem); opacity: .92; }
-  .hero .cta { margin-top: 26px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .hero-grid {
+    position: relative; display: grid; grid-template-columns: 1.15fr .85fr;
+    gap: 40px; align-items: center; perspective: 1400px;
+  }
+  .hero h1 {
+    font-size: clamp(1.9rem, 4.6vw, 3.1rem); line-height: 1.14; letter-spacing: -.02em;
+    margin-bottom: 18px;
+  }
+  .hero h1 .grad {
+    background: linear-gradient(90deg, #C7BEFF, #7EE7FF, #FFD57E);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+  }
+  .hero p.sub { max-width: 560px; font-size: clamp(1rem, 2.2vw, 1.15rem); opacity: .94; }
+  .hero .cta { margin-top: 30px; display: flex; gap: 12px; flex-wrap: wrap; }
   .btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 13px 26px; border-radius: 999px; font-weight: 700; font-size: 1rem;
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 14px 28px; border-radius: 999px; font-weight: 800; font-size: 1rem;
+    position: relative; overflow: hidden; transition: transform .2s, box-shadow .2s;
   }
-  .btn.light { background: #fff; color: var(--primary-dark); }
-  .btn.ghost { background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.4); }
-  .btn.light:hover, .btn.ghost:hover { text-decoration: none; transform: translateY(-1px); }
-  .badges { margin-top: 20px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .btn.light { background: #fff; color: var(--primary-deep); box-shadow: 0 10px 30px rgba(0,0,0,.3); }
+  .btn.ghost { background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.35); backdrop-filter: blur(6px); }
+  .btn:hover { transform: translateY(-2px) scale(1.02); }
+  .btn::after {
+    content: ""; position: absolute; top: 0; left: -80%; width: 50%; height: 100%;
+    background: linear-gradient(100deg, transparent, rgba(255,255,255,.5), transparent);
+    transform: skewX(-20deg); transition: left .5s;
+  }
+  .btn:hover::after { left: 130%; }
+  .badges { margin-top: 26px; display: flex; gap: 9px; flex-wrap: wrap; }
   .badges span {
-    background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25);
-    padding: 5px 13px; border-radius: 999px; font-size: .8rem;
+    background: rgba(255,255,255,.13); border: 1px solid rgba(255,255,255,.28);
+    padding: 6px 14px; border-radius: 999px; font-size: .8rem; backdrop-filter: blur(6px);
+    transition: transform .25s, background .25s;
+  }
+  .badges span:hover { transform: translateY(-3px); background: rgba(255,255,255,.22); }
+
+  .hero-fade { position: absolute; bottom: 0; left: 0; right: 0; height: 90px; background: linear-gradient(transparent, var(--bg)); }
+
+  /* ---------- 3D phone ---------- */
+  .phone-stage { display: flex; justify-content: center; }
+  .phone {
+    width: clamp(200px, 24vw, 270px); aspect-ratio: 9 / 19.4;
+    border-radius: 40px; background: linear-gradient(160deg, #262633, #0D0D15);
+    padding: 9px; position: relative;
+    box-shadow:
+      inset 0 0 0 2.5px rgba(255,255,255,.16),
+      inset 0 0 0 5px rgba(0,0,0,.55),
+      0 40px 80px rgba(0,0,0,.55),
+      0 12px 32px rgba(0,0,0,.4);
+    transform: rotateX(var(--rx, 6deg)) rotateY(var(--ry, -14deg)) rotateZ(var(--rz, 2deg));
+    transform-style: preserve-3d;
+    animation: floaty 7s ease-in-out infinite;
+    transition: transform .18s ease-out;
+    will-change: transform;
+  }
+  @keyframes floaty {
+    0%, 100% { translate: 0 0; }
+    50% { translate: 0 -14px; }
+  }
+  .phone::before { /* punch-hole camera */
+    content: ""; position: absolute; top: 16px; left: 50%; translate: -50% 0;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #05050a; box-shadow: inset 0 0 2px 1px rgba(120,140,255,.5);
+    z-index: 3;
+  }
+  .phone::after { /* diagonal glare */
+    content: ""; position: absolute; inset: 9px; border-radius: 32px;
+    background: linear-gradient(115deg, rgba(255,255,255,.14) 0%, rgba(255,255,255,0) 28%, rgba(255,255,255,0) 72%, rgba(255,255,255,.07) 100%);
+    pointer-events: none; z-index: 2;
+  }
+  .phone .screen {
+    width: 100%; height: 100%; border-radius: 32px; overflow: hidden;
+    background: #101018; position: relative;
+  }
+  .phone .screen img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+  .phone .btn-side {
+    position: absolute; right: -3px; width: 3.5px; border-radius: 3px;
+    background: linear-gradient(90deg, #3a3a4d, #17171f);
+  }
+  .phone .btn-side.b1 { top: 22%; height: 10%; }
+  .phone .btn-side.b2 { top: 34%; height: 16%; }
+  .phone .btn-side.b3 { left: -3px; right: auto; top: 26%; height: 8%; }
+  .phone .glow-under {
+    position: absolute; inset: auto -18% -40px -18%; height: 90px; z-index: -1;
+    background: radial-gradient(ellipse at center, var(--glow1), transparent 70%);
+    filter: blur(30px);
   }
 
-  section { padding: 56px 0; }
-  section:nth-of-type(even) { background: var(--surface); }
-  h2 { font-size: clamp(1.45rem, 3.4vw, 2rem); margin-bottom: 10px; letter-spacing: -0.3px; }
-  h3 { font-size: 1.12rem; margin: 0 0 6px; }
-  .lead { color: var(--muted); max-width: 760px; margin-bottom: 34px; font-size: 1.02rem; }
+  /* ---------- sections ---------- */
+  section { padding: 84px 0; position: relative; }
+  section.tint { background: var(--surface); }
+  h2 { font-size: clamp(1.6rem, 3.6vw, 2.3rem); margin-bottom: 12px; letter-spacing: -.02em; }
+  h2 .tag {
+    display: inline-block; font-size: .78rem; font-weight: 800; letter-spacing: 2px;
+    color: var(--primary); background: var(--primary-light);
+    padding: 5px 14px; border-radius: 999px; margin-bottom: 14px;
+  }
+  .lead { color: var(--muted); max-width: 780px; margin-bottom: 40px; font-size: 1.03rem; }
 
+  .card {
+    background: var(--card); border-radius: var(--radius); padding: 26px;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 10px rgba(0,0,0,.04);
+    transition: transform .3s cubic-bezier(.2,.7,.2,1), box-shadow .3s;
+    transform-style: preserve-3d; will-change: transform;
+    position: relative; overflow: hidden;
+  }
+  .card::before {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), color-mix(in srgb, var(--primary) 12%, transparent), transparent 45%);
+    opacity: 0; transition: opacity .3s; pointer-events: none;
+  }
+  .card:hover { box-shadow: 0 18px 40px rgba(80, 60, 200, .16); }
+  .card:hover::before { opacity: 1; }
+  .card .ico {
+    font-size: 1.6rem; width: 52px; height: 52px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
+    background: linear-gradient(135deg, var(--primary-light), transparent);
+    border: 1px solid var(--border);
+    box-shadow: 0 6px 14px color-mix(in srgb, var(--primary) 22%, transparent);
+  }
+  .card h3 { font-size: 1.08rem; margin-bottom: 7px; }
+  .card p { color: var(--muted); font-size: .94rem; }
   .grid { display: grid; gap: 16px; }
   .grid.g3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-  .grid.g2 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
-  .card {
-    background: var(--bg); border-radius: var(--radius); padding: 22px;
-    border: 1px solid color-mix(in srgb, var(--text) 8%, transparent);
-  }
-  .card .ico { font-size: 1.7rem; margin-bottom: 10px; display: block; }
-  .card p { color: var(--muted); font-size: .95rem; }
 
-  .flow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; margin: 26px 0 6px; font-weight: 600; }
-  .flow .step { background: var(--bg); border-radius: 12px; padding: 12px 18px; border: 1px solid color-mix(in srgb, var(--text) 10%, transparent); }
-  .flow .arrow { color: var(--primary); font-weight: 800; }
-
+  /* ---------- before / after ---------- */
   .example {
-    max-width: 640px; margin: 30px auto 0; background: var(--bg);
-    border-radius: var(--radius); overflow: hidden;
-    border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
-    text-align: left;
+    max-width: 680px; margin: 8px auto 0; border-radius: 20px; overflow: hidden;
+    border: 1px solid var(--border); background: var(--card);
+    box-shadow: 0 20px 50px rgba(60, 40, 160, .12);
   }
-  .example .row { padding: 14px 18px; }
-  .example .row + .row { border-top: 1px dashed color-mix(in srgb, var(--text) 14%, transparent); }
-  .example .label { font-size: .72rem; font-weight: 800; letter-spacing: 1px; color: var(--muted); }
+  .example .row { padding: 16px 20px; }
+  .example .row + .row { border-top: 1px dashed color-mix(in srgb, var(--text) 16%, transparent); }
+  .example .label { font-size: .72rem; font-weight: 800; letter-spacing: 1.6px; color: var(--muted); }
   .example .bad { color: var(--muted); }
   .example .good { color: var(--primary); font-weight: 600; }
   .example .appname { font-weight: 700; }
 
-  .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
-  .shots figure { margin: 0; }
-  .shots img {
-    width: 100%; height: auto; border-radius: 14px; display: block;
-    border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  /* ---------- flow ---------- */
+  .flow { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; margin-top: 10px; font-weight: 700; }
+  .flow .step {
+    background: var(--card); border-radius: 14px; padding: 14px 20px;
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 24px rgba(60,40,160,.1);
+    transition: transform .3s, box-shadow .3s;
   }
-  .shots figcaption { font-size: .82rem; color: var(--muted); text-align: center; padding-top: 6px; }
+  .flow .step:hover { transform: translateY(-5px) scale(1.04); box-shadow: 0 16px 34px rgba(60,40,160,.18); }
+  .flow .arrow { color: var(--primary); font-weight: 800; font-size: 1.2rem; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; transform: translateX(4px); } }
 
-  table.providers { width: 100%; border-collapse: collapse; margin-top: 18px; background: var(--bg); border-radius: var(--radius); overflow: hidden; }
-  table.providers th, table.providers td { padding: 13px 16px; text-align: left; border-bottom: 1px solid color-mix(in srgb, var(--text) 8%, transparent); font-size: .95rem; }
-  table.providers th { background: var(--primary-light); color: var(--text); }
+  /* ---------- carousel ---------- */
+  .carousel-section { overflow: hidden; }
+  .carousel {
+    display: flex; gap: 46px; width: max-content;
+    animation: marquee 48s linear infinite;
+    padding: 30px 0 10px;
+  }
+  .carousel:hover { animation-play-state: paused; }
+  @keyframes marquee { to { transform: translateX(-50%); } }
+  .carousel .item { text-align: center; }
+  .carousel .item .cap { margin-top: 14px; font-size: .85rem; color: var(--muted); font-weight: 600; }
+  .carousel .phone { width: clamp(190px, 21vw, 230px); animation: none; }
+  .fade-l, .fade-r {
+    position: absolute; top: 0; bottom: 0; width: 120px; z-index: 2; pointer-events: none;
+  }
+  .fade-l { left: 0; background: linear-gradient(90deg, var(--bg), transparent); }
+  .fade-r { right: 0; background: linear-gradient(-90deg, var(--bg), transparent); }
+  section.tint .fade-l { background: linear-gradient(90deg, var(--surface), transparent); }
+  section.tint .fade-r { background: linear-gradient(-90deg, var(--surface), transparent); }
+
+  /* ---------- providers ---------- */
+  table.providers { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 8px; background: var(--card); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
+  table.providers th, table.providers td { padding: 15px 18px; text-align: left; border-bottom: 1px solid var(--border); font-size: .95rem; }
+  table.providers th { background: var(--primary-light); font-family: "Space Grotesk", sans-serif; }
   table.providers tr:last-child td { border-bottom: none; }
+  table.providers tr { transition: background .2s; }
+  table.providers tbody tr:hover { background: color-mix(in srgb, var(--primary) 6%, transparent); }
+  @media (max-width: 640px) {
+    table.providers thead { display: none; }
+    table.providers td { display: block; border: none; padding: 4px 18px; }
+    table.providers td:first-child { padding-top: 16px; font-weight: 700; }
+    table.providers tr { display: block; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  }
 
-  details { background: var(--bg); border-radius: 12px; margin-bottom: 10px; border: 1px solid color-mix(in srgb, var(--text) 8%, transparent); }
-  details summary { cursor: pointer; padding: 15px 18px; font-weight: 700; list-style: none; }
-  details summary::before { content: "▸ "; color: var(--primary); }
-  details[open] summary::before { content: "▾ "; }
-  details .answer { padding: 0 18px 15px; color: var(--muted); font-size: .95rem; }
-
-  ol.steps { max-width: 700px; margin: 0 auto; text-align: left; }
-  ol.steps li { margin: 14px 0; color: var(--muted); }
+  /* ---------- install ---------- */
+  ol.steps { max-width: 720px; margin: 0 auto; text-align: left; counter-reset: step; }
+  ol.steps li { list-style: none; counter-increment: step; margin: 18px 0; color: var(--muted); display: flex; gap: 16px; }
+  ol.steps li::before {
+    content: counter(step); flex: 0 0 40px; height: 40px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+    color: #fff; font-weight: 800; font-family: "Space Grotesk", sans-serif;
+    box-shadow: 0 8px 18px var(--glow1);
+  }
   ol.steps li strong { color: var(--text); }
+  ol.steps li .inner { padding-top: 6px; }
+  .center-cta { text-align: center; margin-top: 34px; }
 
-  footer { padding: 40px 0 56px; text-align: center; color: var(--muted); font-size: .9rem; }
+  /* ---------- faq ---------- */
+  details { background: var(--card); border-radius: 14px; margin-bottom: 12px; border: 1px solid var(--border); overflow: hidden; transition: box-shadow .3s; }
+  details:hover { box-shadow: 0 10px 26px rgba(60,40,160,.1); }
+  details summary { cursor: pointer; padding: 17px 20px; font-weight: 700; list-style: none; user-select: none; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before { content: "▸ "; color: var(--primary); font-weight: 800; }
+  details[open] summary::before { content: "▾ "; }
+  details .answer { padding: 0 20px 17px; color: var(--muted); font-size: .95rem; }
+
+  /* ---------- footer ---------- */
+  footer { padding: 48px 0 60px; text-align: center; color: var(--muted); font-size: .9rem; }
   footer .heart { color: var(--primary); }
-  .kw { font-size: .78rem; opacity: .75; max-width: 860px; margin: 18px auto 0; }
-  @media (max-width: 560px) { .hero { padding: 44px 0 40px; } section { padding: 42px 0; } }
+  .kw { font-size: .76rem; opacity: .7; max-width: 880px; margin: 18px auto 0; }
+
+  @media (max-width: 900px) {
+    .hero { padding: 60px 0 80px; }
+    .hero-grid { grid-template-columns: 1fr; text-align: center; gap: 60px; }
+    .hero p.sub { margin: 0 auto; }
+    .hero .cta, .badges { justify-content: center; }
+    section { padding: 60px 0; }
+  }
+  @media (hover: none) {
+    .phone { transform: rotateX(5deg) rotateY(-10deg) rotateZ(1.5deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .reveal { opacity: 1 !important; transform: none !important; }
+    .phone { transform: none !important; }
+  }
 </style>
 </head>
 <body>
+
+<div id="progress" aria-hidden="true"></div>
 
 <header>
   <div class="wrap nav">
     <a class="brand" href="#top" aria-label="NotiMorph home">
       <svg viewBox="0 0 108 108" aria-hidden="true"><rect width="108" height="108" rx="24" fill="#5B4BD6"/><path fill="#fff" d="M54 82c4.4 0 8-3.6 8-8H46c0 4.4 3.6 8 8 8zm24-24V48c0-12.3-6.5-22.6-18-25.3V20c0-3.3-2.7-6-6-6s-6 2.7-6 6v2.7C36.5 25.4 30 35.7 30 48v10l-8 8v4h64v-4l-8-8z"/><path fill="#FFC94D" d="M78 24l3 8 8 3-8 3-3 8-3-8-8-3 8-3 3-8z"/></svg>
-      NotiMorph
+      <b>NotiMorph</b>
     </a>
     <nav class="nav-links" aria-label="Main navigation">
       <a href="#problem">Why boxes?</a>
       <a href="#features">Features</a>
       <a href="#watches">Smartwatches</a>
       <a href="#providers">AI providers</a>
-      <a href="#screenshots">Screenshots</a>
       <a href="#faq">FAQ</a>
-      <a href="https://github.com/Shishir-ip/NotiMorph" rel="noopener">GitHub</a>
+      <a href="https://github.com/Shishir-ip/NotiMorph" rel="noopener">GitHub ↗</a>
     </nav>
   </div>
 </header>
 
 <main id="top">
-  <!-- HERO -->
-  <section class="hero" style="padding-top:64px">
-    <div class="wrap">
-      <span class="appicon" aria-hidden="true">
-        <svg viewBox="0 0 108 108"><path fill="#fff" d="M54 82c4.4 0 8-3.6 8-8H46c0 4.4 3.6 8 8 8zm24-24V48c0-12.3-6.5-22.6-18-25.3V20c0-3.3-2.7-6-6-6s-6 2.7-6 6v2.7C36.5 25.4 30 35.7 30 48v10l-8 8v4h64v-4l-8-8z"/><path fill="#FFC94D" d="M78 24l3 8 8 3-8 3-3 8-3-8-8-3 8-3 3-8z"/><path fill="#9FE8FF" d="M28 62l1.6 4.4L34 68l-4.4 1.6L28 74l-1.6-4.4L22 68l4.4-1.6z"/></svg>
-      </span>
-      <h1>NotiMorph — AI Notification Restyler for Android Smartwatches</h1>
-      <p class="sub">Fixes <strong>broken Bangla / Unicode text</strong>, translates messages to English or
-        <strong>Banglish</strong>, extracts <strong>OTP codes</strong> and cleans up bank &amp; operator SMS —
-        <strong>before</strong> they reach your Mi Band, Galaxy Watch, Amazfit or Pixel Watch.</p>
-      <div class="cta">
-        <a class="btn light" href="https://github.com/Shishir-ip/NotiMorph/releases/latest" rel="noopener">⬇ Download free APK</a>
-        <a class="btn ghost" href="https://github.com/Shishir-ip/NotiMorph" rel="noopener">★ View source on GitHub</a>
+
+  <!-- ============ HERO ============ -->
+  <section class="hero" style="padding-top:86px">
+    <div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
+    <div class="wrap hero-grid">
+      <div>
+        <h1>Fix <span class="grad">broken Bangla text</span> on your smartwatch — with AI</h1>
+        <p class="sub">NotiMorph rewrites every Android notification before it reaches your wrist.
+          Translates to <strong>English or Banglish</strong>, extracts <strong>OTP codes</strong>,
+          cleans <strong>bank &amp; operator SMS</strong> — Mi Band, Galaxy Watch, Amazfit, Pixel Watch,
+          any wearable that mirrors notifications.</p>
+        <div class="cta">
+          <a class="btn light" href="https://github.com/Shishir-ip/NotiMorph/releases/latest" rel="noopener">⬇ Download free APK</a>
+          <a class="btn ghost" href="https://github.com/Shishir-ip/NotiMorph" rel="noopener">★ Open source on GitHub</a>
+        </div>
+        <div class="badges" aria-hidden="true">
+          <span>✅ 100% free</span><span>🚫 No root</span><span>⚡ ~1s rewrites</span>
+          <span>🔒 On-device keys</span><span>🤖 Gemini · Groq · any AI</span>
+        </div>
       </div>
-      <div class="badges" aria-hidden="true">
-        <span>✅ Free &amp; open source</span>
-        <span>🚫 No root needed</span>
-        <span>⚡ ~1 second rewrites</span>
-        <span>🔒 Keys stay on your phone</span>
-        <span>🤖 Gemini · Groq · any AI</span>
+      <div class="phone-stage" id="heroPhone" aria-hidden="true">
+        <div class="phone">
+          <div class="screen"><img src="screenshots/1_home.png" alt="NotiMorph app running on a phone" width="1080" height="2400" fetchpriority="high"></div>
+          <span class="btn-side b1"></span><span class="btn-side b2"></span><span class="btn-side b3"></span>
+          <div class="glow-under"></div>
+        </div>
       </div>
     </div>
+    <div class="hero-fade"></div>
   </section>
 
-  <!-- PROBLEM -->
+  <!-- ============ PROBLEM ============ -->
   <section id="problem">
     <div class="wrap">
-      <h2>Why your smartwatch shows ⬜⬜⬜ instead of Bangla text</h2>
-      <p class="lead">Most smartwatch and smart band fonts — Mi Band, Redmi Band, Xiaomi Smart Band, Amazfit,
-        Galaxy Watch, Pixel Watch — don't include Bengali, Hindi, Tamil or Urdu scripts. When a WhatsApp message,
-        bKash/bank alert or operator SMS arrives in your language, the watch renders empty boxes (tofu) or
-        cuts the message off. NotiMorph fixes that with AI, right on your phone.</p>
-
-      <div class="example" role="img" aria-label="Example: broken Bangla notification before, clean English notification after">
+      <div class="reveal"><span class="tag">THE PROBLEM</span></div>
+      <h2 class="reveal">Why your smartwatch shows ⬜⬜⬜ instead of Bangla</h2>
+      <p class="lead reveal" data-delay="1">Mi Band, Redmi Band, Amazfit, Galaxy Watch — none of their fonts include Bengali,
+        Hindi, Tamil or Urdu scripts. WhatsApp messages, bKash/bank alerts and operator SMS arrive on your wrist
+        as empty boxes (tofu) or get cut off. NotiMorph fixes that with AI, right on your phone.</p>
+      <div class="example reveal" data-delay="2" role="img" aria-label="Broken Bangla notification before, clean English notification after">
         <div class="row">
           <span class="label">BEFORE · WHAT YOUR WATCH SHOWS</span>
           <p class="bad"><span class="appname">Nusrat</span><br>আমার একটা প্রশ্ন আছে, কাল দেখা হবে। টাকা পাঠি…</p>
@@ -278,59 +483,92 @@
     </div>
   </section>
 
-  <!-- HOW IT WORKS -->
-  <section id="how">
+  <!-- ============ HOW ============ -->
+  <section id="how" class="tint">
     <div class="wrap">
-      <h2>How it works</h2>
-      <p class="lead">NotiMorph sits between your apps and your wearable. You pick which apps to restyle; everything else passes through untouched.</p>
-      <div class="flow" aria-label="Flow: app notification, NotiMorph, AI provider, rewritten notification, smartwatch">
-        <span class="step">📩 Notification arrives</span><span class="arrow">→</span>
-        <span class="step">🔔 NotiMorph</span><span class="arrow">→</span>
-        <span class="step">🤖 Gemini / Groq / your AI</span><span class="arrow">→</span>
-        <span class="step">✨ Clean rewritten text</span><span class="arrow">→</span>
-        <span class="step">⌚ Your smartwatch</span>
+      <div class="reveal"><span class="tag">HOW IT WORKS</span></div>
+      <h2 class="reveal">Your notifications, reinterpreted in ~1 second</h2>
+      <p class="lead reveal" data-delay="1">You pick which apps to restyle — everything else passes through untouched.
+        The connection is pre-warmed, so rewrites land before your wrist even raises.</p>
+      <div class="flow" aria-label="Flow: notification arrives, NotiMorph, AI provider, rewritten text, smartwatch">
+        <span class="step reveal" data-delay="1">📩 Notification</span><span class="arrow reveal" data-delay="1">→</span>
+        <span class="step reveal" data-delay="2">🔔 NotiMorph</span><span class="arrow reveal" data-delay="2">→</span>
+        <span class="step reveal" data-delay="3">🤖 Gemini / Groq / your AI</span><span class="arrow reveal" data-delay="3">→</span>
+        <span class="step reveal" data-delay="4">✨ Clean text</span><span class="arrow reveal" data-delay="4">→</span>
+        <span class="step reveal" data-delay="4">⌚ Smartwatch</span>
       </div>
     </div>
   </section>
 
-  <!-- FEATURES -->
+  <!-- ============ FEATURES ============ -->
   <section id="features">
     <div class="wrap">
-      <h2>Features</h2>
-      <p class="lead">Everything runs on your phone. No account, no cloud middleman, no tracking.</p>
+      <div class="reveal"><span class="tag">FEATURES</span></div>
+      <h2 class="reveal">Everything runs on your phone</h2>
+      <p class="lead reveal" data-delay="1">No account, no cloud middleman, no tracking. Bring your own AI key — it never leaves the device.</p>
       <div class="grid g3">
-        <div class="card"><span class="ico">🌐</span><h3>Translate notifications</h3><p>Any language → English, <strong>Banglish</strong> (Bengali in English letters) or full বাংলা script — per app or globally.</p></div>
-        <div class="card"><span class="ico">🛠️</span><h3>Fix garbled text</h3><p>Repairs mojibake, broken encoding and unsupported characters that show as boxes or question marks on tiny screens.</p></div>
-        <div class="card"><span class="ico">🔐</span><h3>OTP extractor</h3><p>Pulls verification codes to the front: <em>CODE: 8812 · Google</em>. Never miss a login code on your wrist.</p></div>
-        <div class="card"><span class="ico">🏦</span><h3>Bank &amp; transaction cleaner</h3><p>Amount, sender and balance at a glance from bKash, Nagad, bank and UPI alerts — marketing text removed.</p></div>
-        <div class="card"><span class="ico">📶</span><h3>SIM / offer SMS decoder</h3><p>Translates operator promo SMS (GP, Robi, Banglalink, Airtel, Jio…) and explains bundles, codes and validity in plain English.</p></div>
-        <div class="card"><span class="ico">✂️</span><h3>Ultra-short &amp; summary</h3><p>Compresses long messages into one readable line for small watch screens, with an optional 100/200/300-character limit.</p></div>
-        <div class="card"><span class="ico">🎛️</span><h3>Per-app control</h3><p>13 prompt presets plus a custom prompt for each app — WhatsApp behaves differently from your bank app.</p></div>
-        <div class="card"><span class="ico">🕘</span><h3>History</h3><p>Every rewrite logged before → after, so you can audit exactly what the AI did.</p></div>
-        <div class="card"><span class="ico">🔄</span><h3>In-app updates</h3><p>Checks GitHub Releases, shows the changelog, downloads and installs the new APK with a progress bar.</p></div>
+        <div class="card tilt reveal"><span class="ico">🌐</span><h3>Translate notifications</h3><p>Any language → English, <strong>Banglish</strong> (Bengali in English letters) or full বাংলা script — per app or globally.</p></div>
+        <div class="card tilt reveal" data-delay="1"><span class="ico">🛠️</span><h3>Fix garbled text</h3><p>Repairs mojibake, broken encoding and unsupported characters that show as boxes or question marks on tiny screens.</p></div>
+        <div class="card tilt reveal" data-delay="2"><span class="ico">🔐</span><h3>OTP extractor</h3><p>Pulls verification codes to the front: <em>CODE: 8812 · Google</em>. Never miss a login code on your wrist.</p></div>
+        <div class="card tilt reveal"><span class="ico">🏦</span><h3>Bank &amp; transaction cleaner</h3><p>Amount, sender and balance at a glance from bKash, Nagad, bank and UPI alerts — marketing text removed.</p></div>
+        <div class="card tilt reveal" data-delay="1"><span class="ico">📶</span><h3>SIM / offer SMS decoder</h3><p>Translates operator promo SMS (GP, Robi, Banglalink, Airtel, Jio…) and explains bundles, codes and validity in plain English.</p></div>
+        <div class="card tilt reveal" data-delay="2"><span class="ico">✂️</span><h3>Ultra-short &amp; summary</h3><p>Compresses long messages into one readable line for small screens, with an optional 100/200/300-character limit.</p></div>
+        <div class="card tilt reveal"><span class="ico">🎛️</span><h3>Per-app control</h3><p>13 prompt presets plus a custom prompt for each app — WhatsApp behaves differently from your bank app.</p></div>
+        <div class="card tilt reveal" data-delay="1"><span class="ico">🕘</span><h3>History</h3><p>Every rewrite logged before → after, so you can audit exactly what the AI changed and what was sent.</p></div>
+        <div class="card tilt reveal" data-delay="2"><span class="ico">🔄</span><h3>In-app updates</h3><p>Checks GitHub Releases, shows the changelog, downloads and installs the new APK with a live progress bar.</p></div>
       </div>
     </div>
   </section>
 
-  <!-- WATCHES -->
+  <!-- ============ CAROUSEL ============ -->
+  <section id="screenshots" class="tint carousel-section" style="overflow:hidden">
+    <div class="wrap">
+      <div class="reveal"><span class="tag">SCREENSHOTS</span></div>
+      <h2 class="reveal">See it in motion</h2>
+      <p class="lead reveal" data-delay="1">Material 3, Material You colors, auto / light / dark themes — hover to pause, sit back and watch.</p>
+    </div>
+    <div style="position:relative">
+      <div class="fade-l"></div><div class="fade-r"></div>
+      <div class="carousel" aria-label="App screenshots carousel">
+        <!-- set A -->
+        <div class="item"><div class="phone"><div class="screen"><img src="screenshots/2_app_sheet.png" alt="Per-app settings sheet with custom prompt editor" loading="lazy"></div></div><div class="cap">Per-app prompts</div></div>
+        <div class="item"><div class="phone"><div class="screen"><img src="screenshots/8_live_banglish.png" alt="Notification shade showing Bengali message rewritten as Banglish live" loading="lazy"></div></div><div class="cap">Live: Bengali → Banglish</div></div>
+        <div class="item"><div class="phone"><div class="screen"><img src="screenshots/4_providers.png" alt="AI provider setup with Gemini, Groq and custom endpoints" loading="lazy"></div></div><div class="cap">Gemini · Groq · custom</div></div>
+        <div class="item"><div class="phone"><div class="screen"><img src="screenshots/3_presets.png" alt="13 prompt presets as chips" loading="lazy"></div></div><div class="cap">13 presets</div></div>
+        <div class="item"><div class="phone"><div class="screen"><img src="screenshots/5_dark.png" alt="NotiMorph dark theme home screen" loading="lazy"></div></div><div class="cap">Dark mode</div></div>
+        <div class="item"><div class="phone"><div class="screen"><img src="screenshots/7_settings.png" alt="Settings with theme picker and watch text limit" loading="lazy"></div></div><div class="cap">Fine-grained control</div></div>
+        <!-- set B (loop copy) -->
+        <div class="item" aria-hidden="true"><div class="phone"><div class="screen"><img src="screenshots/2_app_sheet.png" alt="" loading="lazy"></div></div><div class="cap">Per-app prompts</div></div>
+        <div class="item" aria-hidden="true"><div class="phone"><div class="screen"><img src="screenshots/8_live_banglish.png" alt="" loading="lazy"></div></div><div class="cap">Live: Bengali → Banglish</div></div>
+        <div class="item" aria-hidden="true"><div class="phone"><div class="screen"><img src="screenshots/4_providers.png" alt="" loading="lazy"></div></div><div class="cap">Gemini · Groq · custom</div></div>
+        <div class="item" aria-hidden="true"><div class="phone"><div class="screen"><img src="screenshots/3_presets.png" alt="" loading="lazy"></div></div><div class="cap">13 presets</div></div>
+        <div class="item" aria-hidden="true"><div class="phone"><div class="screen"><img src="screenshots/5_dark.png" alt="" loading="lazy"></div></div><div class="cap">Dark mode</div></div>
+        <div class="item" aria-hidden="true"><div class="phone"><div class="screen"><img src="screenshots/7_settings.png" alt="" loading="lazy"></div></div><div class="cap">Fine-grained control</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WATCHES ============ -->
   <section id="watches">
     <div class="wrap">
-      <h2>Works with every smartwatch &amp; smart band</h2>
-      <p class="lead">If your wearable mirrors Android notifications, NotiMorph's rewritten notification reaches it automatically — no companion-app setup.</p>
+      <div class="reveal"><span class="tag">COMPATIBILITY</span></div>
+      <h2 class="reveal">Works with every smartwatch &amp; smart band</h2>
+      <p class="lead reveal" data-delay="1">If your wearable mirrors Android notifications, NotiMorph's rewritten version reaches it automatically — no companion setup.</p>
       <div class="grid g3">
-        <div class="card"><h3>Xiaomi ecosystem</h3><p>Mi Band 4 · 5 · 6 · 7 · 8, Redmi Smart Band Pro, Xiaomi Smart Band 8 Pro, Xiaomi Watch S series.</p></div>
-        <div class="card"><h3>Wear OS</h3><p>Galaxy Watch 4 · 5 · 6 · 7, Pixel Watch 1 · 2 · 3, TicWatch, Fossil, Moto Watch.</p></div>
-        <div class="card"><h3>Others</h3><p>Amazfit Bip / GTR / GTS / Balance, Noise, boAt, Fire-Boltt, realme Watch, Garmin (via notification mirroring) and any Bluetooth band using Android notifications.</p></div>
+        <div class="card tilt reveal"><h3>📱 Xiaomi ecosystem</h3><p>Mi Band 4 · 5 · 6 · 7 · 8, Redmi Smart Band Pro, Xiaomi Smart Band 8 Pro, Xiaomi Watch S series.</p></div>
+        <div class="card tilt reveal" data-delay="1"><h3>⌚ Wear OS</h3><p>Galaxy Watch 4 · 5 · 6 · 7, Pixel Watch 1 · 2 · 3, TicWatch, Fossil, Moto Watch.</p></div>
+        <div class="card tilt reveal" data-delay="2"><h3>💪 Others</h3><p>Amazfit Bip / GTR / GTS / Balance, Noise, boAt, Fire-Boltt, realme Watch — any band using Android notification mirroring.</p></div>
       </div>
     </div>
   </section>
 
-  <!-- PROVIDERS -->
-  <section id="providers">
+  <!-- ============ PROVIDERS ============ -->
+  <section id="providers" class="tint">
     <div class="wrap">
-      <h2>Powered by the AI you choose</h2>
-      <p class="lead">Bring your own key — it stays on your phone and is sent only to the provider you pick. All three have a free way to start.</p>
-      <table class="providers">
+      <div class="reveal"><span class="tag">AI PROVIDERS</span></div>
+      <h2 class="reveal">Powered by the AI you choose</h2>
+      <p class="lead reveal" data-delay="1">Bring your own key — it stays on your phone and is sent only to the provider you pick. All three have a free way to start.</p>
+      <table class="providers reveal" data-delay="2">
         <thead><tr><th>Provider</th><th>Models</th><th>Free tier</th><th>Get a key</th></tr></thead>
         <tbody>
           <tr><td><strong>Google Gemini</strong></td><td>gemini-3.5-flash-lite (default) · gemini-3.6-flash</td><td>✅ Generous free tier</td><td><a href="https://aistudio.google.com/apikey" rel="noopener">aistudio.google.com/apikey</a></td></tr>
@@ -341,58 +579,47 @@
     </div>
   </section>
 
-  <!-- SCREENSHOTS -->
-  <section id="screenshots">
-    <div class="wrap">
-      <h2>Screenshots</h2>
-      <p class="lead">Material 3 UI with Material You colors, auto / light / dark themes and smooth animations everywhere.</p>
-      <div class="shots">
-        <figure><img src="screenshots/1_home.png" alt="NotiMorph home screen with app list, search and filter chips" width="1080" height="2400" loading="lazy"><figcaption>Home — pick any app to restyle</figcaption></figure>
-        <figure><img src="screenshots/3_presets.png" alt="Per-app prompt editor with 13 presets including Translate to Banglish" width="1080" height="2400" loading="lazy"><figcaption>13 prompt presets per app</figcaption></figure>
-        <figure><img src="screenshots/4_providers.png" alt="AI provider setup with Gemini, Groq and custom OpenAI-compatible options" width="1080" height="2400" loading="lazy"><figcaption>Gemini · Groq · custom AI</figcaption></figure>
-        <figure><img src="screenshots/8_live_banglish.png" alt="Notification shade showing a Bengali message rewritten as Banglish live" width="1080" height="2400" loading="lazy"><figcaption>Live: Bengali → Banglish in ~1s</figcaption></figure>
-        <figure><img src="screenshots/5_dark.png" alt="NotiMorph dark theme" width="1080" height="2400" loading="lazy"><figcaption>Dark mode</figcaption></figure>
-        <figure><img src="screenshots/7_settings.png" alt="Settings with theme picker, hide original toggle and watch text limit" width="1080" height="2400" loading="lazy"><figcaption>Theme &amp; behavior controls</figcaption></figure>
-      </div>
-    </div>
-  </section>
-
-  <!-- INSTALL -->
+  <!-- ============ INSTALL ============ -->
   <section id="install">
     <div class="wrap">
-      <h2>Install in 5 minutes</h2>
+      <div class="reveal"><span class="tag">GET STARTED</span></div>
+      <h2 class="reveal">Install in 5 minutes</h2>
+      <p class="lead reveal" data-delay="1">No account needed. Just the app, one permission, one free AI key.</p>
       <ol class="steps">
-        <li><strong>Download the APK</strong> from <a href="https://github.com/Shishir-ip/NotiMorph/releases/latest" rel="noopener">GitHub Releases</a> and install it (allow "install unknown apps" if asked).</li>
-        <li><strong>Grant Notification access</strong> — the app guides you to the system screen on first launch.</li>
-        <li><strong>Add an AI key</strong> — Gemini (free at <a href="https://aistudio.google.com/apikey" rel="noopener">aistudio.google.com</a>) or Groq (free at <a href="https://console.groq.com/keys" rel="noopener">console.groq.com</a>), then tap <em>Test connection</em>.</li>
-        <li><strong>Enable your apps</strong> — WhatsApp, Messenger, SMS, banking apps… pick any from the list.</li>
-        <li>Send yourself a message and watch your wrist show clean, readable text. ⌚✨</li>
+        <li class="reveal"><span class="inner"><strong>Download the APK</strong> from <a href="https://github.com/Shishir-ip/NotiMorph/releases/latest" rel="noopener">GitHub Releases</a> and install it (allow "install unknown apps" if asked).</span></li>
+        <li class="reveal" data-delay="1"><span class="inner"><strong>Grant Notification access</strong> — the app guides you to the system screen on first launch.</span></li>
+        <li class="reveal" data-delay="2"><span class="inner"><strong>Add an AI key</strong> — Gemini (free at <a href="https://aistudio.google.com/apikey" rel="noopener">aistudio.google.com</a>) or Groq (free at <a href="https://console.groq.com/keys" rel="noopener">console.groq.com</a>), then tap <em>Test connection</em>.</span></li>
+        <li class="reveal" data-delay="3"><span class="inner"><strong>Enable your apps</strong> — WhatsApp, Messenger, SMS, banking apps… pick any from the list.</span></li>
+        <li class="reveal" data-delay="4"><span class="inner">Send yourself a message and watch your wrist show clean, readable text. ⌚✨</span></li>
       </ol>
-      <p style="text-align:center; margin-top:22px"><a class="btn light" style="background:var(--primary);color:#fff" href="https://github.com/Shishir-ip/NotiMorph/releases/latest" rel="noopener">⬇ Get NotiMorph free</a></p>
+      <div class="center-cta reveal"><a class="btn light" style="background:var(--primary);color:#fff;box-shadow:0 14px 34px var(--glow1)" href="https://github.com/Shishir-ip/NotiMorph/releases/latest" rel="noopener">⬇ Get NotiMorph free</a></div>
     </div>
   </section>
 
-  <!-- FAQ -->
-  <section id="faq">
+  <!-- ============ FAQ ============ -->
+  <section id="faq" class="tint">
     <div class="wrap">
-      <h2>Frequently asked questions</h2>
-      <p class="lead">Everything people ask about fixing smartwatch notifications with AI.</p>
-      <details open><summary>Why does my smartwatch show boxes or squares instead of Bangla text?</summary>
-        <div class="answer">Most watch fonts don't include Bengali, Hindi, Tamil or Urdu scripts, so those characters render as empty boxes ("tofu"). NotiMorph intercepts the notification and rewrites it with AI into readable English or Banglish (Bengali typed in English letters) before your watch sees it.</div></details>
-      <details><summary>What exactly is NotiMorph?</summary>
-        <div class="answer">A free, open-source Android app that listens to notifications from apps you choose, sends the text to an AI model (Google Gemini, Groq, or any OpenAI-compatible API), and reposts a cleaned version with the original app's icon — fixing garbled text, translating languages, shortening long messages and extracting OTP codes.</div></details>
-      <details><summary>Is NotiMorph free?</summary>
-        <div class="answer">Yes — MIT-licensed and 100% free. The AI providers have generous free tiers: Gemini keys from aistudio.google.com, Groq keys from console.groq.com.</div></details>
-      <details><summary>Does it work with Mi Band, Galaxy Watch, Amazfit, Pixel Watch?</summary>
-        <div class="answer">Yes — anything that mirrors Android notifications: Mi Band 4–8, Redmi bands, Xiaomi bands, Galaxy Watch 4–7, Pixel Watch 1–3, Amazfit, TicWatch, Noise, boAt, realme and more.</div></details>
-      <details><summary>Does it need root?</summary>
-        <div class="answer">No. Only the standard Android "Notification access" permission — the app guides you there on first launch.</div></details>
-      <details><summary>Will it drain my battery?</summary>
-        <div class="answer">The AI call only runs when a notification from an enabled app arrives. NotiMorph pre-warms its connection and typically finishes a rewrite in under two seconds with minimal battery impact.</div></details>
-      <details><summary>Why isn't my OTP or bank notification rewritten on Android 15?</summary>
-        <div class="answer">Android 15 hides OTP codes and banking amounts from side-loaded notification-listener apps, delivering "Sensitive notification content hidden" instead. NotiMorph detects this and keeps the original. Turning off the system "Sensitive notifications / Enhanced notifications" toggle restores full functionality. Android 14 and below are unaffected.</div></details>
-      <details><summary>Is my data private?</summary>
-        <div class="answer">API keys never leave your phone. Notification text is sent only to the AI provider you choose, purely to rewrite the message. No analytics, no tracking, no accounts — and every rewrite is logged in History so you can see exactly what was sent.</div></details>
+      <div class="reveal"><span class="tag">FAQ</span></div>
+      <h2 class="reveal">Frequently asked questions</h2>
+      <p class="lead reveal" data-delay="1">Everything people ask about fixing smartwatch notifications with AI.</p>
+      <div class="reveal" data-delay="2">
+        <details open><summary>Why does my smartwatch show boxes or squares instead of Bangla text?</summary>
+          <div class="answer">Most watch fonts don't include Bengali, Hindi, Tamil or Urdu scripts, so those characters render as empty boxes ("tofu"). NotiMorph intercepts the notification and rewrites it with AI into readable English or Banglish (Bengali typed in English letters) before your watch sees it.</div></details>
+        <details><summary>What exactly is NotiMorph?</summary>
+          <div class="answer">A free, open-source Android app that listens to notifications from apps you choose, sends the text to an AI model (Google Gemini, Groq, or any OpenAI-compatible API), and reposts a cleaned version with the original app's icon — fixing garbled text, translating languages, shortening long messages and extracting OTP codes.</div></details>
+        <details><summary>Is NotiMorph free?</summary>
+          <div class="answer">Yes — MIT-licensed and 100% free. The AI providers have generous free tiers: Gemini keys from aistudio.google.com, Groq keys from console.groq.com.</div></details>
+        <details><summary>Does it work with Mi Band, Galaxy Watch, Amazfit, Pixel Watch?</summary>
+          <div class="answer">Yes — anything that mirrors Android notifications: Mi Band 4–8, Redmi bands, Xiaomi bands, Galaxy Watch 4–7, Pixel Watch 1–3, Amazfit, TicWatch, Noise, boAt, realme and more.</div></details>
+        <details><summary>Does it need root?</summary>
+          <div class="answer">No. Only the standard Android "Notification access" permission — the app guides you there on first launch.</div></details>
+        <details><summary>Will it drain my battery?</summary>
+          <div class="answer">The AI call only runs when a notification from an enabled app arrives. NotiMorph pre-warms its connection and typically finishes a rewrite in under two seconds with minimal battery impact.</div></details>
+        <details><summary>Why isn't my OTP or bank notification rewritten on Android 15?</summary>
+          <div class="answer">Android 15 hides OTP codes and banking amounts from side-loaded notification-listener apps, delivering "Sensitive notification content hidden" instead. NotiMorph detects this and keeps the original. Turning off the system "Sensitive notifications / Enhanced notifications" toggle restores full functionality. Android 14 and below are unaffected.</div></details>
+        <details><summary>Is my data private?</summary>
+          <div class="answer">API keys never leave your phone. Notification text is sent only to the AI provider you choose, purely to rewrite the message. No analytics, no tracking, no accounts — and every rewrite is logged in History so you can see exactly what was sent.</div></details>
+      </div>
     </div>
   </section>
 </main>
@@ -402,10 +629,71 @@
     <p><a href="https://github.com/Shishir-ip/NotiMorph" rel="noopener">GitHub — Shishir-ip/NotiMorph</a> ·
        <a href="https://github.com/Shishir-ip/NotiMorph/releases/latest" rel="noopener">Download</a> ·
        <a href="https://github.com/Shishir-ip/NotiMorph/issues" rel="noopener">Report an issue</a></p>
-    <p>Made with <span class="heart">♥</span> for smartwatch users · MIT License · Not affiliated with Google, Groq or any watch maker.</p>
+    <p>Made with <span style="color:var(--primary)">♥</span> for smartwatch users · MIT License · Not affiliated with Google, Groq or any watch maker.</p>
     <p class="kw">NotiMorph — AI notification restyler for Android · fix Bangla notification on Mi Band · smartwatch shows squares instead of Bangla · translate WhatsApp notification to English · Banglish notification translator · OTP notification reader · bank SMS cleaner for smartwatch · Gemini notification assistant · Groq notification app · Wear OS Bengali text fix · Galaxy Watch Bangla problem · Amazfit Unicode boxes · notification summarizer for watch · free open-source notification app no root</p>
   </div>
 </footer>
+
+<script>
+(function () {
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* scroll progress bar */
+  var bar = document.getElementById("progress");
+  addEventListener("scroll", function () {
+    var h = document.documentElement;
+    bar.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + "%";
+  }, { passive: true });
+
+  /* scroll reveal */
+  if ("IntersectionObserver" in window && !reduced) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+      });
+    }, { threshold: 0.12, rootMargin: "0px 0px -40px 0px" });
+    document.querySelectorAll(".reveal").forEach(function (el) { io.observe(el); });
+  } else {
+    document.querySelectorAll(".reveal").forEach(function (el) { el.classList.add("in"); });
+  }
+
+  /* pointer fine? then enable 3D tilt */
+  var fine = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  if (fine && !reduced) {
+    /* hero phone parallax */
+    var hero = document.querySelector(".hero");
+    var phone = document.querySelector("#heroPhone .phone");
+    if (hero && phone) {
+      hero.addEventListener("mousemove", function (e) {
+        var r = hero.getBoundingClientRect();
+        var x = (e.clientX - r.left) / r.width - 0.5;
+        var y = (e.clientY - r.top) / r.height - 0.5;
+        phone.style.setProperty("--ry", (-14 + x * 18).toFixed(1) + "deg");
+        phone.style.setProperty("--rx", (6 - y * 12).toFixed(1) + "deg");
+        phone.style.setProperty("--rz", (2 + x * 3).toFixed(1) + "deg");
+      });
+      hero.addEventListener("mouseleave", function () {
+        phone.style.setProperty("--ry", "-14deg");
+        phone.style.setProperty("--rx", "6deg");
+        phone.style.setProperty("--rz", "2deg");
+      });
+    }
+    /* tilt cards with cursor spotlight */
+    document.querySelectorAll(".tilt").forEach(function (card) {
+      card.addEventListener("mousemove", function (e) {
+        var r = card.getBoundingClientRect();
+        var x = (e.clientX - r.left) / r.width;
+        var y = (e.clientY - r.top) / r.height;
+        card.style.transform =
+          "perspective(900px) rotateX(" + ((0.5 - y) * 7).toFixed(1) + "deg) rotateY(" + ((x - 0.5) * 9).toFixed(1) + "deg) translateY(-4px)";
+        card.style.setProperty("--mx", (x * 100).toFixed(0) + "%");
+        card.style.setProperty("--my", (y * 100).toFixed(0) + "%");
+      });
+      card.addEventListener("mouseleave", function () { card.style.transform = ""; });
+    });
+  }
+})();
+</script>
 
 </body>
 </html>
