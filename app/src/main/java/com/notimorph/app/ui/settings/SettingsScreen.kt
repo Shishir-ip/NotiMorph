@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -73,6 +74,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -110,6 +112,22 @@ private fun openUrl(context: android.content.Context, url: String) {
     }
 }
 
+/**
+ * Local text state that commits to DataStore only after typing pauses,
+ * instead of hitting disk on every keystroke.
+ */
+@Composable
+private fun rememberDebouncedField(initial: String, commit: (String) -> Unit): MutableState<String> {
+    val state = remember(initial) { mutableStateOf(initial) }
+    LaunchedEffect(state.value) {
+        if (state.value != initial) {
+            kotlinx.coroutines.delay(300)
+            commit(state.value)
+        }
+    }
+    return state
+}
+
 // ---------------------------------------------------------------------------
 // Update dialog state machine
 // ---------------------------------------------------------------------------
@@ -138,9 +156,10 @@ fun SettingsScreen(nav: NavController) {
         Modifier
             .fillMaxSize()
             .statusBarsPadding()
+            .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp)
-            .padding(bottom = 48.dp),
+            .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         // Header
@@ -173,9 +192,12 @@ fun SettingsScreen(nav: NavController) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         when (s.provider) {
                             Provider.GEMINI -> {
+                                val key = rememberDebouncedField(s.geminiKey) { v ->
+                                    app.appScope.launch { prefs.setGeminiKey(v) }
+                                }
                                 KeyField(
-                                    value = s.geminiKey,
-                                    onChange = { scope.launch { prefs.setGeminiKey(it) } },
+                                    value = key.value,
+                                    onChange = { key.value = it },
                                     label = "Gemini API key",
                                 )
                                 ModelDropdown(
@@ -185,9 +207,12 @@ fun SettingsScreen(nav: NavController) {
                                 )
                             }
                             Provider.GROQ -> {
+                                val key = rememberDebouncedField(s.groqKey) { v ->
+                                    app.appScope.launch { prefs.setGroqKey(v) }
+                                }
                                 KeyField(
-                                    value = s.groqKey,
-                                    onChange = { scope.launch { prefs.setGroqKey(it) } },
+                                    value = key.value,
+                                    onChange = { key.value = it },
                                     label = "Groq API key",
                                 )
                                 ModelDropdown(
@@ -197,23 +222,32 @@ fun SettingsScreen(nav: NavController) {
                                 )
                             }
                             Provider.CUSTOM -> {
+                                val baseUrl = rememberDebouncedField(s.customBaseUrl) { v ->
+                                    app.appScope.launch { prefs.setCustomBaseUrl(v) }
+                                }
                                 OutlinedTextField(
-                                    value = s.customBaseUrl,
-                                    onValueChange = { scope.launch { prefs.setCustomBaseUrl(it) } },
+                                    value = baseUrl.value,
+                                    onValueChange = { baseUrl.value = it },
                                     label = { Text("Base URL (OpenAI-compatible)") },
                                     placeholder = { Text("https://openrouter.ai/api/v1") },
                                     singleLine = true,
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                                     modifier = Modifier.fillMaxWidth(),
                                 )
+                                val customKey = rememberDebouncedField(s.customKey) { v ->
+                                    app.appScope.launch { prefs.setCustomKey(v) }
+                                }
                                 KeyField(
-                                    value = s.customKey,
-                                    onChange = { scope.launch { prefs.setCustomKey(it) } },
+                                    value = customKey.value,
+                                    onChange = { customKey.value = it },
                                     label = "API key (empty for local servers)",
                                 )
+                                val customModel = rememberDebouncedField(s.customModel) { v ->
+                                    app.appScope.launch { prefs.setCustomModel(v) }
+                                }
                                 OutlinedTextField(
-                                    value = s.customModel,
-                                    onValueChange = { scope.launch { prefs.setCustomModel(it) } },
+                                    value = customModel.value,
+                                    onValueChange = { customModel.value = it },
                                     label = { Text("Model name") },
                                     placeholder = { Text("meta-llama/llama-3.3-70b-instruct") },
                                     singleLine = true,
@@ -641,7 +675,10 @@ fun PromptEditorDialog(initial: String, onSave: (String) -> Unit, onDismiss: () 
         onDismissRequest = onDismiss,
         title = "Default prompt",
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            Modifier.verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             Text(
                 "Instructions sent to the AI for every enabled app without its own prompt.",
                 style = MaterialTheme.typography.bodySmall,
@@ -662,7 +699,7 @@ fun PromptEditorDialog(initial: String, onSave: (String) -> Unit, onDismiss: () 
             OutlinedTextField(
                 value = text,
                 onValueChange = { text = it },
-                modifier = Modifier.fillMaxWidth().height(170.dp),
+                modifier = Modifier.fillMaxWidth().height(150.dp),
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = { text = PromptPresets.DEFAULT_PROMPT }) { Text("Reset") }

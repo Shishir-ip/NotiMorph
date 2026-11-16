@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.SystemClock
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import android.util.Log
 import android.util.LruCache
 import com.notimorph.app.NotiMorphApp
 import kotlinx.coroutines.CoroutineScope
@@ -74,6 +75,17 @@ class NotiListener : NotificationListenerService() {
                 ?: extras.getCharSequence(android.app.Notification.EXTRA_TEXT)
             )?.toString()?.trim().orEmpty()
         if (body.isBlank()) return
+        // Android 15+ redacts sensitive notifications delivered to listener
+        // services while the keyguard is locked (see
+        // https://developer.android.com/about/versions/15). Rewriting the
+        // redaction placeholder would only create garbage — skip it and let the
+        // original stand. The placeholder is localized, so prefer the framework's
+        // own string, with English fallbacks.
+        if (looksRedacted(body) || sbn.notification.visibility == android.app.Notification.VISIBILITY_SECRET) {
+            Log.i(TAG, "skipped redacted/secret notification from ${sbn.packageName}")
+            return
+        }
+        Log.i(TAG, "incoming ${sbn.packageName}: title='${title.take(30)}' body='${body.take(60)}'")
 
         val key = "${sbn.packageName}|$title|$body"
         val now = SystemClock.elapsedRealtime()
@@ -139,8 +151,32 @@ class NotiListener : NotificationListenerService() {
     }
 
     companion object {
+        private const val TAG = "NotiMorph"
         private const val DUPLICATE_WINDOW_MS = 5_000L
         private const val CACHE_TTL_MS = 10 * 60_000L
+        private const val REDACTED_EN_1 = "Sensitive notification content hidden"
+        private const val REDACTED_EN_2 = "Sensitive content hidden"
+
+        @Volatile
+        private var cachedRedactionString: String? = null
+
+        /** The framework's own localized redaction placeholder, if reachable. */
+        private fun systemRedactionString(): String? {
+            cachedRedactionString?.let { return it }
+            val found = runCatching {
+                val res = android.content.res.Resources.getSystem()
+                val id = res.getIdentifier("sensitive_notification_content_hidden", "string", "android")
+                if (id != 0) res.getString(id) else null
+            }.getOrNull()
+            cachedRedactionString = found
+            return found
+        }
+
+        fun looksRedacted(body: String): Boolean {
+            if (body.equals(REDACTED_EN_1, ignoreCase = true)) return true
+            if (body.equals(REDACTED_EN_2, ignoreCase = true)) return true
+            return systemRedactionString()?.let { body.equals(it, ignoreCase = true) } ?: false
+        }
 
         /** Whether this app currently holds notification-listener access. */
         fun isConnected(context: Context): Boolean {

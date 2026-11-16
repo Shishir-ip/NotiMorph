@@ -17,20 +17,22 @@ object PromptPresets {
     const val CORE_RULES =
         "You rewrite phone notifications so they display well on small smartwatch screens. " +
             "Reply with ONLY the final notification text: no quotes, no markdown, no explanations, " +
-            "no extra line before or after. Preserve real names, numbers, amounts, OTP codes and links. " +
+            "no extra line before or after. " +
+            "CRITICAL: never drop or alter information — every OTP/verification code, amount, " +
+            "order/bill number, date/time, URL and phone number must appear EXACTLY as written in the original. " +
             "Keep the result under 300 characters unless stated otherwise."
 
     val DEFAULT_PROMPT =
         "Rewrite this notification in clean, simple English. Fix any broken or garbled characters. " +
-            "Keep the sender, the key details (amounts, times, codes, links) and the core meaning. " +
-            "Make it short and readable on a watch."
+            "Translate any non-English text. Keep the sender and ALL key details (amounts, times, " +
+            "codes, OTPs, links) exactly as written. Make it short and readable on a watch."
 
     val list: List<Preset> = listOf(
         Preset(
             "smart", "Smart Clean", "Best for everything: readable, complete, tidy",
             "Rewrite this notification in clean, simple English. Fix any broken or garbled characters. " +
-                "Keep the sender, the key details (amounts, times, codes, links) and the core meaning. " +
-                "Make it short and readable on a watch.",
+                "Translate any non-English text. Keep the sender and ALL key details (amounts, times, " +
+                "codes, OTPs, links) exactly as written. Make it short and readable on a watch.",
         ),
         Preset(
             "short", "Ultra Short", "Squeeze into one tiny line",

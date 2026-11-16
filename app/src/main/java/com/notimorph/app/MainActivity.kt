@@ -34,8 +34,8 @@ import com.notimorph.app.ui.theme.NotiMorphTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         val app = application as NotiMorphApp
         setContent {
             val settings by app.prefs.state.collectAsState()

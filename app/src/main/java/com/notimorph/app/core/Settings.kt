@@ -51,7 +51,7 @@ enum class Provider(
 object Models {
     val GEMINI = listOf(
         "gemini-3.5-flash-lite" to "Gemini 3.5 Flash Lite · fastest (default)",
-        "gemini-3.6-flash" to "Gemini 3.6 Flash · smarter",
+        "gemini-3.6-flash" to "Gemini 3.6 Flash · smarter, thinks first (slower)",
     )
     val GROQ = listOf(
         "openai/gpt-oss-120b" to "GPT-OSS 120B (default)",

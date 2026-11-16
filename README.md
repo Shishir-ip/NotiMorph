@@ -67,6 +67,11 @@ WhatsApp ──▶ NotiMorph ──▶ Gemini / Groq / your AI ──▶ clean r
 |----------------|-----------------------|-----------|-------|
 | ![Providers](fastlane/metadata/android/en-US/images/phoneScreenshots/4_providers.png) | ![Settings](fastlane/metadata/android/en-US/images/phoneScreenshots/7_settings.png) | ![Dark](fastlane/metadata/android/en-US/images/phoneScreenshots/5_dark.png) | ![About](fastlane/metadata/android/en-US/images/phoneScreenshots/6_about.png) |
 
+**Live proof** — a Bengali WhatsApp-style message rewritten on the fly (per-app *Translate → Banglish* prompt,
+947 ms end-to-end on the default Gemini model):
+
+![Live: Bengali → Banglish](fastlane/metadata/android/en-US/images/phoneScreenshots/8_live_banglish.png)
+
 ## 🚀 Getting started
 
 1. **Install** the [latest release APK](https://github.com/Shishir-ip/NotiMorph/releases/latest)
@@ -86,12 +91,17 @@ WhatsApp ──▶ NotiMorph ──▶ Gemini / Groq / your AI ──▶ clean r
 | Technique | Effect |
 |---|---|
 | HTTP/2 + keep-alive pool | Skips DNS + TLS on repeat calls (~200–400 ms) |
-| Endpoint pre-warm on app start | First notification arrives at a hot connection |
-| Compact prompt + `maxOutputTokens=512`, `temperature=0.2` | Fast, deterministic rewrites |
+| Endpoint pre-warm on app start + periodic re-warm | Every notification arrives at a hot connection |
+| Compact prompt + `maxOutputTokens=320`, `temperature=0.2` | Fast, deterministic rewrites |
+| No hidden "thinking" on Flash-Lite; `thinkingBudget=1` on thinking models | Cuts seconds of hidden reasoning |
+| `reasoning_effort: low` on Groq GPT-OSS | Skips heavy reasoning passes |
 | Duplicate suppression (5 s window) | Apps reposting the same payload don't cost extra calls |
-| Result replay cache | Identical raw notification → instant repost, zero API calls |
+| Prompt-bound replay cache (10 min TTL) | Identical raw notification → instant repost, zero API calls — and any prompt change takes effect immediately |
+| One transparent retry | Survives transient 429/5xx/network blips |
 | Bounded concurrency (4) | Notification bursts never overload the network |
 | Graceful fallback | On any API error the original text is kept, never lost |
+
+Typical end-to-end latency with the default Gemini model: **~0.7–1.5 s** after the first call.
 
 ## 🛠️ Build from source
 
@@ -133,6 +143,16 @@ app arrives, and the network connection is pooled and pre-warmed.
 **Does the watch still show the original notification?**
 Yes, both appear by default (safe behavior). Turn on **Hide the original** in Settings if you want
 only the restyled one — recommended for watch use.
+
+**Why isn't my OTP/bank notification rewritten on Android 15+?**
+Android 15 deliberately hides OTP codes and banking amounts from side-loaded notification-listener
+apps — it delivers the text *"Sensitive notification content hidden"* instead of the real message
+([platform change](https://www.androidauthority.com/android-15-sensitive-notifications-3416414),
+[developer discussion](https://www.reddit.com/r/androiddev/comments/1g7tdld/android_15_breaks_notification_listeners/)).
+NotiMorph detects this and leaves the original untouched instead of posting garbage. Non-sensitive
+notifications (chats, news, social) are unaffected. To get full OTP coverage on Android 15+, turn off
+**Enhanced/Sensitive notifications** in the system notification settings (NotiMorph shows a one-tap
+hint for this). Android 14 and below are unaffected.
 
 **My language isn't Bengali — still useful?** Absolutely. Any language works: translation presets,
 OTP extraction, summarization and noise removal are language-agnostic.

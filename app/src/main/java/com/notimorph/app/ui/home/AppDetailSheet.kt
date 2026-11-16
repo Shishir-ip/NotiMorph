@@ -1,5 +1,6 @@
 package com.notimorph.app.ui.home
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -29,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -47,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import com.notimorph.app.NotiMorphApp
 import com.notimorph.app.core.AiClient
 import com.notimorph.app.core.PromptPresets
+import com.notimorph.app.ui.settings.PromptEditorDialog
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -61,8 +64,17 @@ fun AppDetailSheet(entry: AppEntry, onDismiss: () -> Unit) {
     var text by remember(entry.pkg, currentCustom) { mutableStateOf(currentCustom) }
     var showTest by remember { mutableStateOf(false) }
     var showDefaultEditor by remember { mutableStateOf(false) }
+    var hideRequested by remember { mutableStateOf(false) }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // Programmatic close: animate the sheet down first, then leave composition.
+    LaunchedEffect(hideRequested) {
+        if (hideRequested) {
+            sheetState.hide()
+            onDismiss()
+        }
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
@@ -104,9 +116,9 @@ fun AppDetailSheet(entry: AppEntry, onDismiss: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                SwitchMorphic(
+                Switch(
                     checked = s.enabledApps.contains(entry.pkg),
-                    onChecked = { on ->
+                    onCheckedChange = { on ->
                         // App-level scope: survives the sheet leaving composition.
                         app.appScope.launch { prefs.setAppEnabled(entry.pkg, on) }
                     },
@@ -162,11 +174,11 @@ fun AppDetailSheet(entry: AppEntry, onDismiss: () -> Unit) {
                     OutlinedButton(onClick = { showTest = true }) { Text("Test") }
                     Button(
                         onClick = {
-                            // IMPORTANT: write from the app-level scope and dismiss
-                            // immediately — a composition-bound scope would be
-                            // cancelled mid-write when the sheet closes.
+                            // IMPORTANT: write from the app-level scope — a
+                            // composition-bound scope would be cancelled mid-write
+                            // when the sheet closes. Then animate the sheet down.
                             app.appScope.launch { prefs.setAppPrompt(entry.pkg, text) }
-                            onDismiss()
+                            hideRequested = true
                         },
                     ) { Text("Save") }
                 }
@@ -189,7 +201,7 @@ fun AppDetailSheet(entry: AppEntry, onDismiss: () -> Unit) {
     }
 
     if (showDefaultEditor) {
-        com.notimorph.app.ui.settings.PromptEditorDialog(
+        PromptEditorDialog(
             initial = s.defaultPrompt,
             onSave = { app.appScope.launch { prefs.setDefaultPrompt(it) } },
             onDismiss = { showDefaultEditor = false },
@@ -205,13 +217,11 @@ fun AppDetailSheet(entry: AppEntry, onDismiss: () -> Unit) {
     }
 }
 
-/** Reusable switch with a springy feel. */
-@Composable
-fun SwitchMorphic(checked: Boolean, onChecked: (Boolean) -> Unit) {
-    androidx.compose.material3.Switch(checked = checked, onCheckedChange = onChecked)
-}
+/** The sample notification used by every in-app preview. */
+const val SAMPLE_TITLE = "Rahim"
+const val SAMPLE_BODY = "আপনার অর্ডার #4521 ডেলিভারির জন্য প্রস্তুত! OTP 8812 ব্যবহার করুন। Track: https://x.co/4521 🎉"
 
-/** Runs the active AI provider against a sample notification and shows the result. */
+/** Runs the active AI provider against a sample notification and shows before → after. */
 @Composable
 fun TestPromptDialog(title: String, prompt: String?, onDismiss: () -> Unit) {
     val context = LocalContext.current
@@ -224,8 +234,8 @@ fun TestPromptDialog(title: String, prompt: String?, onDismiss: () -> Unit) {
         result = AiClient.transform(
             s,
             appName = title,
-            title = "Rahim",
-            body = "আপনার অর্ডার #4521 ডেলিভারির জন্য প্রস্তুত! OTP 8812 ব্যবহার করুন। Track: https://x.co/4521 🎉",
+            title = SAMPLE_TITLE,
+            body = SAMPLE_BODY,
             customPrompt = prompt,
         )
         running = false
@@ -238,7 +248,27 @@ fun TestPromptDialog(title: String, prompt: String?, onDismiss: () -> Unit) {
         },
         title = { Text("Preview · $title") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                // Before
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(
+                            MaterialTheme.colorScheme.surfaceContainerHigh,
+                            MaterialTheme.shapes.medium,
+                        )
+                        .padding(10.dp),
+                ) {
+                    Text("BEFORE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        SAMPLE_BODY,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 if (running) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
@@ -248,16 +278,26 @@ fun TestPromptDialog(title: String, prompt: String?, onDismiss: () -> Unit) {
                 } else {
                     result?.fold(
                         onSuccess = { text ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    Icons.Rounded.CheckCircle, null,
-                                    Modifier.size(18.dp),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text("Result", style = MaterialTheme.typography.labelLarge)
+                            Column(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
+                                        MaterialTheme.shapes.medium,
+                                    )
+                                    .padding(10.dp),
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Rounded.CheckCircle, null,
+                                        Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("AFTER", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                }
+                                Text(text, style = MaterialTheme.typography.bodyLarge)
                             }
-                            Text(text, style = MaterialTheme.typography.bodyLarge)
                         },
                         onFailure = { e ->
                             Row(verticalAlignment = Alignment.CenterVertically) {

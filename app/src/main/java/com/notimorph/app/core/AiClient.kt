@@ -1,6 +1,8 @@
 package com.notimorph.app.core
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.ConnectionPool
 import okhttp3.MediaType.Companion.toMediaType
@@ -17,14 +19,14 @@ import java.util.concurrent.TimeUnit
  * Single shared HTTP engine for all providers.
  * - HTTP/2 + keep-alive pool so repeat calls skip DNS + TLS (~200-400 ms saved)
  * - Tight timeouts, small max-output, low temperature -> lowest possible latency
+ * - Gemini gets a derived client with a longer ceiling: its "smarter" models
+ *   can queue on the free tier; the default lite model answers in ~1 s anyway.
  */
 object AiClient {
 
+    private const val TAG = "NotiMorph"
     private val JSON = "application/json; charset=utf-8".toMediaType()
 
-    // One shared engine for warm-up AND real calls so the pre-warmed
-    // connection is actually reused. Tight timeouts -> fail fast, the
-    // original notification is still on the watch anyway.
     val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(6, TimeUnit.SECONDS)
         .readTimeout(12, TimeUnit.SECONDS)
@@ -33,7 +35,26 @@ object AiClient {
         .protocols(listOf(Protocol.HTTP_2, Protocol.HTTP_1_1))
         .build()
 
-    /** Cheap fire-and-forget request to warm DNS + TLS for the active provider. */
+    /** Same pool, but tolerant of Gemini's occasional free-tier queueing. */
+    private val geminiClient: OkHttpClient = client.newBuilder()
+        .readTimeout(28, TimeUnit.SECONDS)
+        .callTimeout(30, TimeUnit.SECONDS)
+        .build()
+
+    /** HTTP error carrying the status code, so retries can be selective. */
+    private class HttpError(val code: Int, message: String) : IOException(message)
+
+    // --- warm-up -------------------------------------------------------------
+
+    private val warmLock = Any()
+    private var warmSig: String? = null
+    private var warmAt: Long = 0L
+
+    /**
+     * Fire-and-forget request that warms DNS + TLS for the active provider.
+     * Throttled: runs when the config changes or every ~3.5 min, so the pooled
+     * connection never goes cold while the app is alive (pool TTL is 5 min).
+     */
     fun warmup(s: Settings) {
         if (!s.isConfigured()) return
         val url = when (s.provider) {
@@ -42,13 +63,25 @@ object AiClient {
             Provider.CUSTOM -> s.customBaseUrl.trim().trimEnd('/')
         }
         if (url.isBlank() || !url.startsWith("http")) return
-        client.newCall(Request.Builder().url(url).head().build()).enqueue(object : okhttp3.Callback {
-            override fun onFailure(call: okhttp3.Call, e: IOException) {}
-            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
-                response.close()
-            }
-        })
+        val sig = "${s.provider.id}|${s.currentModel}|${s.currentKey.hashCode()}|$url"
+        synchronized(warmLock) {
+            if (sig == warmSig && SystemClockElapsed() - warmAt < 210_000L) return
+            warmSig = sig
+            warmAt = SystemClockElapsed()
+        }
+        runCatching {
+            client.newCall(Request.Builder().url(url).head().build()).enqueue(object : okhttp3.Callback {
+                override fun onFailure(call: okhttp3.Call, e: IOException) {}
+                override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                    response.close()
+                }
+            })
+        }
     }
+
+    private fun SystemClockElapsed(): Long = android.os.SystemClock.elapsedRealtime()
+
+    // --- public entry points --------------------------------------------------
 
     /**
      * Transform one notification. Returns the rewritten text.
@@ -67,24 +100,43 @@ object AiClient {
             if (title.isNotBlank()) append("Title: ").append(title).append('\n')
             append("Message: ").append(body)
         }
+        val started = SystemClockElapsed()
         try {
-            val text = when (s.provider) {
-                Provider.GEMINI -> callGemini(s.geminiModel, s.geminiKey, sys, user)
-                Provider.GROQ -> callOpenAI(
-                    "https://api.groq.com/openai/v1/chat/completions",
-                    s.groqModel, s.groqKey, sys, user, lowReasoning = true,
-                )
-                Provider.CUSTOM -> {
-                    val base = s.customBaseUrl.trim().trimEnd('/')
-                    val url = if (base.endsWith("/chat/completions")) base else "$base/chat/completions"
-                    callOpenAI(url, s.customModel.trim(), s.customKey, sys, user, lowReasoning = false)
-                }
-            }
+            val text = callWithRetry(s, sys, user)
             val cleaned = clean(text, s.maxLen)
+            Log.i(TAG, "restyle ok in ${SystemClockElapsed() - started}ms via ${s.provider.id}/${s.currentModel}")
             if (cleaned.isBlank()) Result.failure(IOException("The model returned an empty message."))
             else Result.success(cleaned)
         } catch (e: Exception) {
+            Log.i(TAG, "restyle FAILED after ${SystemClockElapsed() - started}ms: ${e.message?.take(140)}")
             Result.failure(e)
+        }
+    }
+
+    /** One transparent retry on transient failures (network blip, 429, 5xx). */
+    private suspend fun callWithRetry(s: Settings, sys: String, user: String): String {
+        var attempt = 0
+        while (true) {
+            attempt++
+            try {
+                return when (s.provider) {
+                    Provider.GEMINI -> callGemini(s.geminiModel, s.geminiKey, sys, user)
+                    Provider.GROQ -> callOpenAI(
+                        "https://api.groq.com/openai/v1/chat/completions",
+                        s.groqModel, s.groqKey, sys, user, lowReasoning = true,
+                    )
+                    Provider.CUSTOM -> {
+                        val base = s.customBaseUrl.trim().trimEnd('/')
+                        val url = if (base.endsWith("/chat/completions")) base else "$base/chat/completions"
+                        callOpenAI(url, s.customModel.trim(), s.customKey, sys, user, lowReasoning = false)
+                    }
+                }
+            } catch (e: IOException) {
+                val transient = e !is HttpError || e.code == 429 || e.code >= 500
+                if (!transient || attempt >= 2) throw e
+                Log.i(TAG, "transient failure (attempt $attempt), retrying: ${e.message?.take(120)}")
+                delay(350)
+            }
         }
     }
 
@@ -97,28 +149,32 @@ object AiClient {
         customPrompt = null,
     )
 
-    // --- Google Gemini ------------------------------------------------------
+    // --- Google Gemini --------------------------------------------------------
 
-    /** Thrown when the endpoint rejects thinkingConfig; we retry without it. */
-    private class ThinkingUnsupportedException : IOException("thinkingConfig rejected")
-
+    /**
+     * Thinking behaviour varies per model and the API rejects wrong values with
+     * a bare 400, so: "lite" models get no thinking parameter at all (they are
+     * non-thinking by default and answer in ~1 s); everything else tries
+     * thinkingBudget=1 to stop 3.x models from burning 20-30 s on hidden
+     * reasoning; any 400 falls back to the plain request.
+     */
     private fun callGemini(model: String, key: String, sys: String, user: String): String {
+        val wantsLowThinking = !model.contains("lite")
         return try {
-            geminiOnce(model, key, sys, user, disableThinking = true)
-        } catch (e: ThinkingUnsupportedException) {
-            geminiOnce(model, key, sys, user, disableThinking = false)
+            geminiOnce(model, key, sys, user, lowThinking = wantsLowThinking)
+        } catch (e: HttpError) {
+            if (e.code == 400 && wantsLowThinking) geminiOnce(model, key, sys, user, lowThinking = false)
+            else throw e
         }
     }
 
-    private fun geminiOnce(model: String, key: String, sys: String, user: String, disableThinking: Boolean): String {
+    private fun geminiOnce(model: String, key: String, sys: String, user: String, lowThinking: Boolean): String {
         if (key.isBlank()) throw IOException("Add your Gemini API key in Settings → API key.")
-        // thinkingBudget 0 = no hidden reasoning: the single biggest latency win
-        // on Flash-class models (rewriting a notification needs zero thinking).
         val generationConfig = JSONObject()
             .put("temperature", 0.2)
             .put("maxOutputTokens", 320)
-        if (disableThinking) {
-            generationConfig.put("thinkingConfig", JSONObject().put("thinkingBudget", 0))
+        if (lowThinking) {
+            generationConfig.put("thinkingConfig", JSONObject().put("thinkingBudget", 1))
         }
 
         val payload = JSONObject()
@@ -142,14 +198,9 @@ object AiClient {
             .post(payload.toString().toRequestBody(JSON))
             .build()
 
-        client.newCall(request).execute().use { resp ->
+        geminiClient.newCall(request).execute().use { resp ->
             val text = resp.body?.string().orEmpty()
-            if (!resp.isSuccessful) {
-                if (resp.code == 400 && text.contains("thinkingConfig")) {
-                    throw ThinkingUnsupportedException()
-                }
-                throw IOException(errorText(resp.code, text))
-            }
+            if (!resp.isSuccessful) throw HttpError(resp.code, errorText(resp.code, text))
             val root = JSONObject(text)
             root.optJSONObject("promptFeedback")?.optString("blockReason")?.takeIf { it.isNotBlank() }
                 ?.let { throw IOException("Blocked by safety filter: $it") }
@@ -164,7 +215,8 @@ object AiClient {
         }
     }
 
-    // --- OpenAI-compatible (Groq + custom endpoints) ------------------------
+    // --- OpenAI-compatible (Groq + custom endpoints) --------------------------
+
     private fun callOpenAI(
         url: String,
         model: String,
@@ -195,7 +247,7 @@ object AiClient {
 
         client.newCall(builder.build()).execute().use { resp ->
             val text = resp.body?.string().orEmpty()
-            if (!resp.isSuccessful) throw IOException(errorText(resp.code, text))
+            if (!resp.isSuccessful) throw HttpError(resp.code, errorText(resp.code, text))
             val root = JSONObject(text)
             val content = root.optJSONArray("choices")?.optJSONObject(0)
                 ?.optJSONObject("message")?.optString("content")
@@ -204,12 +256,11 @@ object AiClient {
         }
     }
 
-    // --- helpers ------------------------------------------------------------
+    // --- helpers ---------------------------------------------------------------
     private fun errorText(code: Int, body: String): String {
         val msg = try {
             val err = JSONObject(body).optJSONObject("error")
             err?.optString("message")?.takeIf { it.isNotBlank() }
-                ?: JSONObject(body).optString("message")?.takeIf { it.isNotBlank() }
         } catch (_: Exception) { null }
         return "HTTP $code${msg?.let { ": $it" } ?: ""}".take(220)
     }

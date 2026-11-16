@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -28,6 +30,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.NotificationsActive
@@ -86,6 +89,12 @@ data class AppEntry(
 @JvmInline
 value class ImageBitmapHolder(val bitmap: androidx.compose.ui.graphics.ImageBitmap)
 
+/** Process-wide cache so returning to Home is instant (icons decoded once). */
+object AppListCache {
+    @Volatile
+    var entries: List<AppEntry>? = null
+}
+
 private enum class HomeTab(val label: String) {
     ENABLED("Enabled"),
     USER("User"),
@@ -103,16 +112,24 @@ fun HomeScreen(nav: NavController) {
     val connected by app.listenerConnected.collectAsState()
     val scope = rememberCoroutineScope()
 
-    var apps by remember { mutableStateOf<List<AppEntry>?>(null) }
+    var apps by remember { mutableStateOf(AppListCache.entries) }
     var query by remember { mutableStateOf("") }
     var tab by remember { mutableStateOf(HomeTab.USER) }
     var selectedApp by remember { mutableStateOf<AppEntry?>(null) }
 
     LaunchedEffect(Unit) {
-        apps = loadApps(context)
+        val fresh = loadApps(context)
+        AppListCache.entries = fresh
+        apps = fresh
     }
 
-    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding()
+    ) {
         // ---- Header --------------------------------------------------------
         Row(
             Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 6.dp),
@@ -139,6 +156,20 @@ fun HomeScreen(nav: NavController) {
             AccessCard(onGrant = { NotiListener.openAccessSettings(context) })
         }
 
+        // ---- Android 15+ locked-phone hint ----------------------------------
+        AnimatedVisibility(visible = connected && android.os.Build.VERSION.SDK_INT >= 35) {
+            LockedPhoneHintCard(
+                onOpenSettings = {
+                    runCatching {
+                        context.startActivity(
+                            android.content.Intent("android.settings.NOTIFICATION_SETTINGS")
+                                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                    }
+                }
+            )
+        }
+
         // ---- Status pills ---------------------------------------------------
         androidx.compose.foundation.layout.FlowRow(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
@@ -157,7 +188,9 @@ fun HomeScreen(nav: NavController) {
                 )
             }
             if (!s.isConfigured()) {
-                StatusPill(text = "No API key", color = Color(0xFFF9AB00), icon = Icons.Rounded.Key)
+                Box(Modifier.clickable { nav.navigate("settings") }) {
+                    StatusPill(text = "No API key — tap to set up", color = Color(0xFFF9AB00), icon = Icons.Rounded.Key)
+                }
             } else {
                 StatusPill(text = s.provider.label, color = MaterialTheme.colorScheme.primary)
             }
@@ -172,13 +205,13 @@ fun HomeScreen(nav: NavController) {
             leadingIcon = { Icon(Icons.Rounded.Search, null) },
             trailingIcon = {
                 if (query.isNotEmpty()) {
-                    Text(
-                        "✕",
-                        modifier = Modifier
-                            .clickable { query = "" }
-                            .padding(8.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    IconButton(onClick = { query = "" }) {
+                        Icon(
+                            Icons.Rounded.Close, "Clear search",
+                            Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             },
             singleLine = true,
@@ -332,6 +365,37 @@ private fun AppRow(
 }
 
 @Composable
+private fun LockedPhoneHintCard(onOpenSettings: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 4.dp)
+            .background(
+                MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.45f),
+                RoundedCornerShape(20.dp),
+            )
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                "Locked-phone tip (Android 15+)",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                "Android may hide OTP/bank text from apps while the phone is locked. " +
+                    "Turning off \u201CSensitive notifications\u201D in system notification settings fixes it.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Button(onClick = onOpenSettings) { Text("Open") }
+    }
+}
+
+@Composable
 private fun AccessCard(onGrant: () -> Unit) {
     Row(
         modifier = Modifier
@@ -380,7 +444,7 @@ private suspend fun loadApps(context: Context): List<AppEntry> = withContext(Dis
         .map { ai ->
             val label = runCatching { pm.getApplicationLabel(ai).toString() }.getOrElse { ai.packageName }
             val icon: Drawable? = runCatching { pm.getApplicationIcon(ai.packageName) }.getOrNull()
-            val bmp = runCatching { icon?.toBitmap(96, 96) }.getOrNull()
+            val bmp = runCatching { icon?.toBitmap(72, 72) }.getOrNull()
             AppEntry(
                 pkg = ai.packageName,
                 label = label,
