@@ -12,7 +12,7 @@ Fixes garbled Bangla/Unicode text, over-long messages, emoji noise and operator 
 [![Built with](https://img.shields.io/badge/built%20with-Kotlin%20·%20Jetpack%20Compose-7F52FF?style=flat-square&logo=kotlin)](https://kotlinlang.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
 
-[Download the latest APK](https://github.com/Shishir-ip/NotiMorph/releases/latest) · [Report a bug](https://github.com/Shishir-ip/NotiMorph/issues)
+[Download the latest APK](https://github.com/Shishir-ip/NotiMorph/releases/latest) · [🌐 Website](https://shishir-ip.github.io/NotiMorph/) · [Report a bug](https://github.com/Shishir-ip/NotiMorph/issues)
 
 </div>
 
